@@ -1,17 +1,31 @@
 # hermes-alibaba-token-plan
 
-Standalone [Hermes](https://github.com/NousResearch/hermes-agent) model-provider plugin for the **Alibaba Cloud Token Plan (Team Edition)** — Alibaba's subscription (Credits) billing model, served from its own gateways, separate from DashScope pay-as-you-go and the Coding Plan.
+Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for **Qwen Cloud Token Plan**.
 
-Ships both regions, mirroring how Hermes models MiniMax (`minimax` / `minimax-cn`):
+The Global provider supports both Token Plan **Personal Edition** and **Team Edition** through Qwen Cloud's OpenAI-compatible endpoint. It is deliberately separate from Qwen Cloud pay-as-you-go and Coding Plan because those products use different keys, endpoints, billing, quotas, and model entitlements.
 
-| Provider | Region | Endpoint |
+## Billing paths are not interchangeable
+
+| Product | Hermes provider | Credential | OpenAI-compatible endpoint | Billing |
+|---|---|---|---|---|
+| Qwen Cloud pay-as-you-go | Built-in `alibaba` | `DASHSCOPE_API_KEY` | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` | Usage-based |
+| Qwen Cloud Token Plan Personal or Team | This plugin: `alibaba-token-plan` | Dedicated Token Plan key | `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1` | Credits subscription |
+| Alibaba Cloud Coding Plan | Built-in `alibaba-coding-plan` | Dedicated Coding Plan key | `https://coding-intl.dashscope.aliyuncs.com/v1` | Invocation-based subscription |
+
+Never mix these keys or URLs. The Token Plan profile intentionally does not accept `DASHSCOPE_API_KEY`, and quota exhaustion never falls back to pay-as-you-go.
+
+## Providers
+
+| Provider | Scope | Endpoint |
 |---|---|---|
-| `alibaba-token-plan` | Global / Singapore | `token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1` |
-| `alibaba-token-plan-cn` | China / Beijing | `token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1` |
+| `alibaba-token-plan` | Qwen Cloud Global/Singapore, Personal + Team | `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1` |
+| `alibaba-token-plan-cn` | Legacy Alibaba Cloud China/Beijing Team integration | `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1` |
 
-Both use the `openai_chat` transport (the default for plugin providers). Reasoning arrives in `reasoning_content`, verified against the live gateway.
+Both use Hermes' `chat_completions` transport. The China profile is retained for backward compatibility and has separate credentials and independently sourced model claims; do not assume Global and China entitlements are identical.
 
 ## Install
+
+Requirements: a current Hermes Agent checkout/install and Bash.
 
 ```bash
 git clone https://github.com/oliver-mee/hermes-alibaba-token-plan
@@ -19,52 +33,166 @@ cd hermes-alibaba-token-plan
 ./install.sh
 ```
 
-Or copy the two provider directories into `$HERMES_HOME/plugins/model-providers/` by hand (defaults to `~/.hermes/plugins/model-providers/`).
+The installer copies only the two known provider directories into:
 
-## Configure
-
-```bash
-# Global (Singapore)
-export ALIBABA_TOKEN_PLAN_API_KEY=sk-...
-# China (Beijing)
-export ALIBABA_TOKEN_PLAN_CN_API_KEY=sk-...
+```text
+${HERMES_HOME:-~/.hermes}/plugins/model-providers/
 ```
 
-`DASHSCOPE_API_KEY` is also accepted for the Global provider. Then:
+It verifies copied files and moves any previous installation to a timestamped recovery directory under `plugins/model-providers/.backups/`.
+
+Verify, upgrade, or uninstall:
 
 ```bash
-hermes doctor          # both providers appear in the API-key health checks
-hermes model           # both appear in the picker with the curated catalog
+./install.sh --verify
+./install.sh                 # rerun after git pull to upgrade
+./install.sh --uninstall     # moves installed copies to .backups
 ```
 
-Hermes discovers user model-provider plugins lazily and auto-populates the provider registry, model picker, aliases, and doctor from the profile — no core changes needed.
+To test another Hermes home without touching your normal configuration:
+
+```bash
+HERMES_HOME="$(mktemp -d)" ./install.sh
+```
+
+## Configure Global Token Plan
+
+Create or reset the dedicated key on the [Qwen Cloud API Keys page](https://home.qwencloud.com/api-keys). Token Plan keys are displayed only when generated or reset; save them in a secret manager or `~/.hermes/.env`, never in `config.yaml`, source files, screenshots, logs, or shell history.
+
+Hermes checks these names in order:
+
+```bash
+QWEN_TOKEN_PLAN_API_KEY=YOUR_DEDICATED_TOKEN_PLAN_KEY
+# Official Qwen Code-compatible alternative:
+# BAILIAN_TOKEN_PLAN_API_KEY=YOUR_DEDICATED_TOKEN_PLAN_KEY
+# Backward-compatible name from earlier plugin versions:
+# ALIBABA_TOKEN_PLAN_API_KEY=YOUR_DEDICATED_TOKEN_PLAN_KEY
+```
+
+Use only one unless you are deliberately testing precedence. `ALIBABA_TOKEN_PLAN_BASE_URL` is available as an advanced override, but the default is the documented Global OpenAI-compatible endpoint and normally should not be changed.
+
+Then select the provider:
+
+```bash
+hermes model
+# Choose: Qwen Cloud Token Plan Personal + Team
+
+hermes chat --provider alibaba-token-plan --model qwen3.7-plus
+```
+
+Aliases include `qwen-token-plan`, `qwencloud-token-plan`, `bailian-token-plan`, `token-plan`, `aliyun-token-plan`, and the legacy `alibaba_token_plan`.
+
+## Personal and Team editions
+
+The same Global provider and endpoint cover both editions; the dedicated key determines the subscription and entitlement.
+
+### Personal Edition
+
+Personal plans use two Credits-based sliding limits:
+
+- a 5-hour window;
+- a 7-day window.
+
+Service pauses when either limit is exhausted and resumes when usage ages out of the corresponding window. Check current plan limits and usage in the [Token Plan console](https://home.qwencloud.com/billing/subscription/token-plan).
+
+### Team Edition
+
+Team plans allocate a fixed monthly Credits quota to each seat. After a seat quota is depleted, requests consume the organization's shared usage package when one is available. Unused quota does not roll over. There is no automatic pay-as-you-go fallback.
+
+Owners and admins assign or revoke seats, generate per-member keys, and inspect organization/model/member usage in the [Token Plan management console](https://tokenplan-enterprise.qwencloud.com/). Do not share one member key across a team.
 
 ## Models
 
-Curated catalog (the live `/models` endpoint is merged in behind these): `qwen3.7-max`, `qwen3.7-plus` (the plan's default), `qwen3.6-plus`, `qwen3.6-flash`, `deepseek-v4-pro`, `deepseek-v4-flash`, `deepseek-v3.2`, `kimi-k2.7-code`, `kimi-k2.6`, `kimi-k2.5`, `glm-5.2`, `glm-5.1`, `glm-5`, `MiniMax-M2.5`. Both regions serve the same set.
+The Global fallback catalog is the conservative Personal/Team text-model intersection suitable for Hermes agent workflows:
+
+- `qwen3.8-max-preview`
+- `qwen3.7-max`
+- `qwen3.7-plus`
+- `qwen3.6-flash` (default auxiliary model)
+- `glm-5.2`
+- `deepseek-v4-pro`
+
+Team Edition can expose additional models such as `qwen3.6-plus`, DeepSeek/Kimi/GLM variants, and `MiniMax-M2.5`. Type an exact currently entitled model ID if it is not in the conservative fallback list. The plugin intentionally does not probe `/models`: the subscription gateway does not document that endpoint as a stable entitlement catalog, and an unverified response must not broaden the picker.
+
+`qwen3.8-max-preview` is Token Plan-only and always uses thinking mode. Qwen Cloud documents `low`, `high`, and `xhigh` reasoning effort for this preview, with `xhigh` as the default. Do not try to disable thinking for this model. Other Qwen hybrid-thinking models honor Hermes' explicit reasoning enable/disable setting and return reasoning through `reasoning_content`.
+
+## Streaming, tools, and auxiliary tasks
+
+The plugin uses Qwen Cloud's OpenAI-compatible Chat Completions API, including:
+
+- SSE streaming;
+- function/tool calling;
+- `reasoning_content` normalization;
+- explicit `enable_thinking` for supported Qwen models;
+- `qwen3.6-flash` for Hermes auxiliary work.
+
+Token Plan is licensed for interactive programming and agent tools. Qwen Cloud prohibits use as an unattended automation backend, application backend, batch processor, load-testing service, or shared key pool. Repository tests are mocked and make no billed calls. Run only bounded, interactive manual smoke tests with your own active subscription.
+
+## Troubleshooting
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| `401 InvalidApiKey` / invalid access token | Wrong plan's key, malformed key, expired subscription | Use the dedicated Token Plan key, remove whitespace, verify subscription, reset the key if needed |
+| `403 invalid api-key` / “Incorrect API key provided” | Token Plan key paired with a DashScope/Coding URL, or vice versa | Restore the default endpoint and remove PAYG/Coding credentials from the Token Plan lane |
+| `404` / connection failure | Wrong protocol path or hostname | Use the exact `/compatible-mode/v1` endpoint shown above |
+| `400 Model not exist` / model not supported | Misspelled, wrong-case, or unavailable model | Use an exact model ID currently entitled for your edition |
+| `400` max-token or thinking-budget range | Requested output/reasoning budget exceeds model limit | Lower the configured budget or use the model default |
+| `429 API-Key Requests rate limit exceeded` | Short request burst or account-level model rate limit | Wait about one minute, reduce request density, and avoid key sharing |
+| `429 Throttling.AllocationQuota` / `insufficient_quota` | Credits depleted or model TPS/TPM exceeded | Check edition-specific usage; wait for reset, use a Team shared package, or smooth interactive requests |
+
+A configured key does not prove the endpoint is reachable. Use one bounded interactive chat and, when appropriate, one small tool-call loop to validate the exact key/endpoint/model tuple.
+
+## China profile
+
+The backward-compatible China provider uses:
+
+```bash
+ALIBABA_TOKEN_PLAN_CN_API_KEY=YOUR_CHINA_TOKEN_PLAN_KEY
+# Advanced override only:
+# ALIBABA_TOKEN_PLAN_CN_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+```
+
+Select `alibaba-token-plan-cn`. China and Global keys, consoles, endpoints, and catalogs are distinct.
 
 ## Tests
 
+Standalone contract tests require only pytest:
+
 ```bash
-python -m pytest tests/ -q
+python3 -m pytest tests/test_profiles.py -q
 ```
 
-The suite runs standalone (no Hermes checkout needed) — `tests/conftest.py` mocks `providers.base` and the tests assert the profile contract Hermes' auto-wiring depends on: names, aliases, env-var ordering, endpoints, and catalogs.
+Real integration tests exercise the plugin through a current Hermes checkout with a disposable `HERMES_HOME` and synthetic credentials. They perform no network calls:
 
-## Known limitations (upstream)
+```bash
+HERMES_AGENT_REPO=/path/to/hermes-agent \
+  python3 -m pytest tests/test_current_hermes_integration.py -q
+```
 
-Two small behaviours from the original in-tree PR ([NousResearch/hermes-agent#52915](https://github.com/NousResearch/hermes-agent/pull/52915)) cannot be expressed from a plugin yet:
+CI runs both lanes and exercises install, verification, and uninstall behavior without secrets.
 
-- **Model-identity workaround** — the Token Plan gateway can misreport the serving model's name; Hermes core injects a corrective identity line only for `provider == "alibaba"` (`agent/system_prompt.py`), so token-plan sessions may self-report the gateway's name when asked.
-- **`provider:model` prefix stripping** — `agent/model_metadata.py` keeps a static prefix list, so `alibaba-token-plan:qwen3.7-plus` style model strings won't strip the prefix for metadata lookups. Plain model IDs with the provider set separately work fine.
+## Known upstream limitations
 
-Neither affects inference. Both are candidates for small generic upstream PRs (widen the plugin surface rather than special-case a vendor).
+- Model-identity correction is being generalized upstream in [NousResearch/hermes-agent#66135](https://github.com/NousResearch/hermes-agent/pull/66135). Until that lands, a Token Plan gateway response can report a serving identity different from the selected model.
+- External provider-prefix stripping is tracked in [NousResearch/hermes-agent#66106](https://github.com/NousResearch/hermes-agent/issues/66106). Use `--provider alibaba-token-plan --model MODEL`, rather than embedding `alibaba-token-plan:` in the model ID, on affected Hermes versions.
 
-## Roadmap
+These do not change endpoint or credential routing.
 
-- **pip packaging** — ship as a PyPI package with a `hermes_agent.plugins` entry point, so `pip install hermes-alibaba-token-plan` works alongside the copy-in install. Copy-in is the documented primary path for model-provider plugins today, so it ships first.
-- **`misreports_model_identity` flag** — once the upstream profile field lands (see Known limitations above), set it on both profiles so token-plan sessions self-report the correct model name.
+## Official sources
 
-## History
+- [Token Plan overview](https://docs.qwencloud.com/token-plan/overview)
+- [Personal Edition overview](https://docs.qwencloud.com/token-plan/personal/token-plan-personal-overview)
+- [Team Edition overview and models](https://docs.qwencloud.com/token-plan/team/token-plan-team-overview)
+- [Team quick start](https://docs.qwencloud.com/token-plan/team/token-plan-team-quickstart)
+- [Team management](https://docs.qwencloud.com/token-plan/team/team-management)
+- [Token Plan FAQ and error guidance](https://docs.qwencloud.com/token-plan/team/token-plan-team-faq)
+- [Qwen Code configuration examples](https://docs.qwencloud.com/developer-guides/clients-and-developer-tools/qwen-code)
+- [Hermes Agent configuration guide](https://docs.qwencloud.com/developer-guides/clients-and-developer-tools/hermes-agent)
 
-Consolidates the in-tree PR NousResearch/hermes-agent#52915, which was closed under the project's standalone-plugin policy for third-party provider integrations. The base provider work originates from @cudasuan (NousResearch/hermes-agent#35347).
+## History and credit
+
+This standalone repository preserves the work from [NousResearch/hermes-agent#52915](https://github.com/NousResearch/hermes-agent/pull/52915), which moved out of tree under Hermes' standalone third-party-plugin policy. The base provider implementation originated with [@cudasuan](https://github.com/cudasuan) in [NousResearch/hermes-agent#35347](https://github.com/NousResearch/hermes-agent/pull/35347), and the standalone packaging and regional split were completed by [@oliver-mee](https://github.com/oliver-mee). Their Git history and attribution are retained.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

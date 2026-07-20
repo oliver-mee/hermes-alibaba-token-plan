@@ -1,0 +1,58 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  standalone:
+    name: Standalone plugin tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+      - name: Run standalone contract tests
+        run: python -m pytest tests/test_profiles.py -q
+      - name: Exercise installer in a temporary Hermes home
+        run: |
+          hermes_home="$(mktemp -d)"
+          trap 'rm -rf "$hermes_home"' EXIT
+          HERMES_HOME="$hermes_home" ./install.sh
+          HERMES_HOME="$hermes_home" ./install.sh --verify
+          HERMES_HOME="$hermes_home" ./install.sh --uninstall
+          test ! -e "$hermes_home/plugins/model-providers/alibaba-token-plan"
+          test ! -e "$hermes_home/plugins/model-providers/alibaba-token-plan-cn"
+
+  current-hermes-integration:
+    name: Current Hermes integration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out plugin
+        uses: actions/checkout@v4
+      - name: Check out current Hermes
+        uses: actions/checkout@v4
+        with:
+          repository: NousResearch/hermes-agent
+          path: hermes-agent
+          fetch-depth: 1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Hermes and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./hermes-agent pytest
+      - name: Run real discovery integration test
+        env:
+          HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
+        run: python -m pytest tests/test_current_hermes_integration.py -q
