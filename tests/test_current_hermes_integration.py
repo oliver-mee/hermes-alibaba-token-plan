@@ -42,6 +42,7 @@ from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credenti
 from hermes_cli.doctor import _build_apikey_providers_list
 from hermes_cli.models import CANONICAL_PROVIDERS, provider_model_ids
 from agent.auxiliary_client import _get_aux_model_for_provider
+from agent.transports.chat_completions import ChatCompletionsTransport
 
 expected_models = (
     "qwen3.8-max-preview",
@@ -78,6 +79,38 @@ assert profile.supports_health_check is False
 assert profile.fetch_models(api_key="synthetic-key") is None
 for alias in profile.aliases:
     assert get_provider_profile(alias) is profile
+
+# Profile hooks run through Hermes' actual Chat Completions transport. The
+# Token-only Qwen3.8 preview stays in always-thinking mode even if a stale user
+# setting asks to disable it; qwen3.7 preserves defaults until explicitly set.
+transport = ChatCompletionsTransport()
+qwen38_kwargs = transport.build_kwargs(
+    model="qwen3.8-max-preview",
+    messages=[{"role": "user", "content": "ping"}],
+    provider_profile=profile,
+    reasoning_config={"enabled": False, "effort": "max"},
+    supports_reasoning=True,
+)
+assert qwen38_kwargs["extra_body"] == {
+    "enable_thinking": True,
+    "reasoning_effort": "xhigh",
+}
+qwen37_default = transport.build_kwargs(
+    model="qwen3.7-plus",
+    messages=[{"role": "user", "content": "ping"}],
+    provider_profile=profile,
+    reasoning_config=None,
+    supports_reasoning=True,
+)
+assert "extra_body" not in qwen37_default
+qwen37_disabled = transport.build_kwargs(
+    model="qwen3.7-plus",
+    messages=[{"role": "user", "content": "ping"}],
+    provider_profile=profile,
+    reasoning_config={"enabled": False},
+    supports_reasoning=True,
+)
+assert qwen37_disabled["extra_body"] == {"enable_thinking": False}
 
 # The real auth registry is auto-extended from the discovered plugin profile.
 auth = PROVIDER_REGISTRY["alibaba-token-plan"]

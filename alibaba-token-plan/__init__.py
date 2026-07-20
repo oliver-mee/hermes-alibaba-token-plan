@@ -18,12 +18,57 @@ Official docs:
 
 from __future__ import annotations
 
+from typing import Any
+
 from providers import register_provider
 from providers.base import ProviderProfile
 
 
 class QwenTokenPlanProfile(ProviderProfile):
-    """Token Plan profile with an explicit no-live-catalog policy."""
+    """Token Plan profile with an offline catalog and Qwen thinking contract."""
+
+    def build_api_kwargs_extras(
+        self,
+        *,
+        reasoning_config: dict[str, Any] | None = None,
+        model: str | None = None,
+        **context: Any,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        """Translate Hermes reasoning controls to Qwen's OpenAI-compatible body.
+
+        Qwen3.8 Max Preview is always-thinking. An explicit attempt to disable
+        it is therefore ignored, while Hermes' generic ``max`` effort is mapped
+        to Qwen3.8's highest documented value, ``xhigh``. For the other Qwen
+        models in this plugin, leave server defaults untouched unless the user
+        explicitly enables/disables reasoning. Non-Qwen models get no Qwen-only
+        fields.
+        """
+        model_name = str(model or "").strip().lower()
+        config = reasoning_config if isinstance(reasoning_config, dict) else {}
+
+        if model_name.startswith("qwen3.8-max-preview"):
+            body: dict[str, Any] = {"enable_thinking": True}
+            effort = str(config.get("effort") or "").strip().lower()
+            if effort:
+                normalized = {
+                    "low": "low",
+                    "medium": "high",
+                    "high": "high",
+                    "xhigh": "xhigh",
+                    "max": "xhigh",
+                }.get(effort)
+                if normalized:
+                    body["reasoning_effort"] = normalized
+            return body, {}
+
+        if model_name.startswith(("qwen3.7-", "qwen3.6-")) and config:
+            enabled = config.get("enabled")
+            if enabled is None and config.get("effort"):
+                enabled = True
+            if enabled is not None:
+                return {"enable_thinking": bool(enabled)}, {}
+
+        return {}, {}
 
     def fetch_models(
         self,

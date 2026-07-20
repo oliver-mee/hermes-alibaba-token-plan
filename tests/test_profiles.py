@@ -76,6 +76,41 @@ def test_global_profile_is_isolated_from_payg_credentials(mock_providers_package
     assert p.base_url != "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
 
 
+def test_qwen38_always_enables_thinking_and_normalizes_effort(mock_providers_package):
+    load_plugin("alibaba-token-plan")
+    p = mock_providers_package["alibaba-token-plan"]
+
+    body, top_level = p.build_api_kwargs_extras(
+        model="qwen3.8-max-preview",
+        reasoning_config={"enabled": False, "effort": "max"},
+    )
+    assert body == {"enable_thinking": True, "reasoning_effort": "xhigh"}
+    assert top_level == {}
+
+
+def test_qwen37_explicit_reasoning_toggle_maps_to_enable_thinking(mock_providers_package):
+    load_plugin("alibaba-token-plan")
+    p = mock_providers_package["alibaba-token-plan"]
+
+    assert p.build_api_kwargs_extras(
+        model="qwen3.7-plus", reasoning_config=None
+    ) == ({}, {})
+    assert p.build_api_kwargs_extras(
+        model="qwen3.7-plus", reasoning_config={"enabled": True, "effort": "high"}
+    ) == ({"enable_thinking": True}, {})
+    assert p.build_api_kwargs_extras(
+        model="qwen3.7-plus", reasoning_config={"enabled": False}
+    ) == ({"enable_thinking": False}, {})
+
+
+def test_non_qwen_models_do_not_receive_qwen_thinking_fields(mock_providers_package):
+    load_plugin("alibaba-token-plan")
+    p = mock_providers_package["alibaba-token-plan"]
+    assert p.build_api_kwargs_extras(
+        model="glm-5.2", reasoning_config={"enabled": True, "effort": "high"}
+    ) == ({}, {})
+
+
 def test_cn_profile_registers(mock_providers_package):
     load_plugin("alibaba-token-plan-cn")
     p = mock_providers_package["alibaba-token-plan-cn"]
