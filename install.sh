@@ -35,10 +35,18 @@ if [[ -z "$HERMES_HOME" || "$HERMES_HOME" == "/" || "$DEST" == "/plugins/model-p
   exit 2
 fi
 
+# Do not follow writable plugin-directory symlinks. HERMES_HOME itself may be
+# a legitimate symlink, but its plugin tree must be an ordinary directory so
+# install/backup operations cannot be redirected outside the selected home.
+if [[ -L "$HERMES_HOME/plugins" || -L "$DEST" ]]; then
+  printf 'error: refusing symlinked Hermes plugin destination\n' >&2
+  exit 2
+fi
+
 for name in "${PLUGIN_NAMES[@]}"; do
   source_dir="$SRC/$name"
   target_dir="$DEST/$name"
-  if [[ ! -d "$source_dir" || ! -f "$source_dir/__init__.py" || ! -f "$source_dir/plugin.yaml" ]]; then
+  if [[ -L "$source_dir" || ! -d "$source_dir" || ! -f "$source_dir/__init__.py" || ! -f "$source_dir/plugin.yaml" ]]; then
     printf 'error: source plugin is incomplete: %s\n' "$source_dir" >&2
     exit 1
   fi
@@ -52,6 +60,11 @@ done
 
 backup_root="$DEST/.backups"
 backup_stamp="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+
+if [[ -L "$backup_root" ]]; then
+  printf 'error: refusing symlinked plugin backup destination\n' >&2
+  exit 2
+fi
 
 verify_plugin() {
   local name="$1"

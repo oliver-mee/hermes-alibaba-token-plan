@@ -31,6 +31,14 @@ jobs:
           HERMES_HOME="$hermes_home" ./install.sh --uninstall
           test ! -e "$hermes_home/plugins/model-providers/alibaba-token-plan"
           test ! -e "$hermes_home/plugins/model-providers/alibaba-token-plan-cn"
+          unsafe_home="$(mktemp -d)"
+          outside="$(mktemp -d)"
+          mkdir -p "$unsafe_home/plugins"
+          ln -s "$outside" "$unsafe_home/plugins/model-providers"
+          if HERMES_HOME="$unsafe_home" ./install.sh; then
+            echo "installer unexpectedly followed a symlinked plugin destination" >&2
+            exit 1
+          fi
 
   current-hermes-integration:
     name: Current Hermes integration
