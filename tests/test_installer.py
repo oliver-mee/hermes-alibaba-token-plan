@@ -97,3 +97,13 @@ def test_symlinked_destination_and_backup_are_rejected(tmp_path: Path):
     (root / ".backups").symlink_to(outside)
     assert run_installer(backup_home).returncode == 2
     assert not any(outside.iterdir())
+
+
+def test_relative_hermes_home_is_normalized(tmp_path: Path):
+    home = tmp_path / "relative-home"
+    relative_home = Path(os.path.relpath(home, REPO))
+
+    installed = run_installer(relative_home)
+
+    assert installed.returncode == 0, installed.stderr
+    assert (plugin_root(home) / "alibaba-token-plan" / "__init__.py").is_file()

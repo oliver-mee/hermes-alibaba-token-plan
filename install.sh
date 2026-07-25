@@ -3,6 +3,9 @@
 set -euo pipefail
 
 HERMES_HOME="${HERMES_HOME:-${HOME:?Set HERMES_HOME or HOME}}"
+if [[ "$HERMES_HOME" != /* ]]; then
+  HERMES_HOME="$PWD/$HERMES_HOME"
+fi
 DEST="$HERMES_HOME/plugins/model-providers"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_NAME="alibaba-token-plan"
@@ -87,7 +90,7 @@ if [[ "$ACTION" == uninstall ]]; then
     if [[ -e "$dir" || -L "$dir" ]]; then
       name="${dir##*/}"
       recovery_dir="$backup_root/${name}.${backup_stamp}"
-      mv -- "$dir" "$recovery_dir"
+      mv "$dir" "$recovery_dir"
       printf 'Removed %s (recovery copy: %s)\n' "$dir" "$recovery_dir"
     else
       printf 'Already absent: %s\n' "$dir"
@@ -104,28 +107,28 @@ if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
   printf 'error: staging destination already exists: %s\n' "$staging_dir" >&2
   exit 1
 fi
-cp -a -- "$source_dir" "$staging_dir"
+cp -a "$source_dir" "$staging_dir"
 
 rollback_install() {
   mkdir -p "$backup_root"
   if [[ -e "$target_dir" || -L "$target_dir" ]]; then
-    mv -- "$target_dir" "$backup_root/${PLUGIN_NAME}.failed-${backup_stamp}" || true
+    mv "$target_dir" "$backup_root/${PLUGIN_NAME}.failed-${backup_stamp}" || true
   fi
   if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
-    mv -- "$staging_dir" "$backup_root/${PLUGIN_NAME}.staging-${backup_stamp}" || true
+    mv "$staging_dir" "$backup_root/${PLUGIN_NAME}.staging-${backup_stamp}" || true
   fi
   if [[ -n "$main_backup" && -e "$main_backup" ]]; then
-    mv -- "$main_backup" "$target_dir" || true
+    mv "$main_backup" "$target_dir" || true
   fi
   if [[ -n "$legacy_backup" && -e "$legacy_backup" ]]; then
-    mv -- "$legacy_backup" "$legacy_dir" || true
+    mv "$legacy_backup" "$legacy_dir" || true
   fi
 }
 
 if [[ -e "$target_dir" || -L "$target_dir" ]]; then
   mkdir -p "$backup_root"
   main_backup="$backup_root/${PLUGIN_NAME}.${backup_stamp}"
-  if ! mv -- "$target_dir" "$main_backup"; then
+  if ! mv "$target_dir" "$main_backup"; then
     rollback_install
     exit 1
   fi
@@ -134,13 +137,13 @@ fi
 if [[ -e "$legacy_dir" || -L "$legacy_dir" ]]; then
   mkdir -p "$backup_root"
   legacy_backup="$backup_root/${LEGACY_NAME}.${backup_stamp}"
-  if ! mv -- "$legacy_dir" "$legacy_backup"; then
+  if ! mv "$legacy_dir" "$legacy_backup"; then
     rollback_install
     exit 1
   fi
 fi
 
-if ! mv -- "$staging_dir" "$target_dir" || ! verify_plugin; then
+if ! mv "$staging_dir" "$target_dir" || ! verify_plugin; then
   rollback_install
   exit 1
 fi
