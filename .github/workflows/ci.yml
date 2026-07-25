@@ -41,7 +41,7 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Run standalone contract and installer tests
-        run: python -m pytest tests/test_profiles.py tests/test_installer.py -q
+        run: python -m pytest tests/test_profiles.py tests/test_installer.py tests/test_pr_policy.py -q
       - name: Run syntax and compile checks
         run: |
           bash -n install.sh

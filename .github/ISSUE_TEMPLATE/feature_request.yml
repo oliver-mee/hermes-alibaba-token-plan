@@ -1,0 +1,41 @@
+name: Feature request
+description: Propose or submit a new capability
+title: "feat: "
+labels:
+  - enhancement
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        You do not need prior approval to implement a feature. You may submit this issue and a pull request together. Maintainer approval is still required before merge.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What user need does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the behaviour and its scope.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and evidence
+      description: Note affected providers, Hermes versions, catalogue evidence, and any validation limits.
+    validations:
+      required: true
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I intend to submit a pull request.
+          required: false
+        - label: I understand that paid or token-consuming AI-run checks require express, informed, bounded permission.
+          required: true

@@ -16,8 +16,9 @@ from providers import register_provider
 from providers.base import ProviderProfile
 
 
-# Generated from reference/models.json by the parent project's tools/generate.py.
-# Keep this order: it is the canonical models.json order used by the picker.
+# Generated from the public Token Plan Wiki snapshot at v2026.7.25:
+# https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/v2026.7.25/data/models.json
+# Keep this order: it is the canonical catalogue order used by the picker.
 PERSONAL_MODELS = (
     "qwen3.8-max-preview",
     "qwen3.7-max",
