@@ -1,0 +1,62 @@
+name: Bug report
+description: Report reproducible incorrect plugin behaviour
+title: "bug: "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include API keys, account identifiers, private endpoints, or unredacted logs.
+        If the problem is in Hermes itself rather than this provider, report it to [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent/issues/new/choose).
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Provider
+      options:
+        - Global / Singapore
+        - China / Beijing
+        - Both
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Plugin version, Hermes version, operating system, and Python version
+      placeholder: "Plugin v1.1.0, Hermes v0.19.0, Ubuntu, Python 3.11"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction
+      description: Minimal steps using redacted values
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation performed
+      description: State exactly what you checked, what you did not check, and why.
+      placeholder: "Offline test: passed (...). Live inference: not run because ..."
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety checks
+      options:
+        - label: I removed credentials, account identifiers, private endpoints, and private paths.
+          required: true
+        - label: Any paid or token-consuming AI-run checks had my express, informed, bounded permission.
+          required: false

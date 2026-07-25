@@ -1,5 +1,9 @@
 # Hermes Alibaba Token Plan
 
+[![Tests](https://github.com/oliver-mee/hermes-alibaba-token-plan/actions/workflows/ci.yml/badge.svg)](https://github.com/oliver-mee/hermes-alibaba-token-plan/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/oliver-mee/hermes-alibaba-token-plan)](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Cloud and Qwen Cloud Token Plan.
 
 One installed plugin registers two backward-compatible providers:
@@ -11,13 +15,28 @@ One installed plugin registers two backward-compatible providers:
 
 The regions use separate accounts, credentials, consoles, and endpoints. They currently expose the same measured chat catalogue. Both use Hermes' OpenAI-compatible Chat Completions transport.
 
+## Requirements
+
+- Hermes Agent v0.18.2 through v0.19.0
+- Python 3.11 through 3.13
+- Linux or macOS
+
+CI tests the compatibility points above. The scheduled advisory check tracks
+current Hermes `main`, but an unreleased upstream change is not part of the
+supported contract.
+
 ## Install
 
 ```bash
 git clone https://github.com/oliver-mee/hermes-alibaba-token-plan
 cd hermes-alibaba-token-plan
+git checkout <release-tag>
 ./install.sh
 ```
+
+Choose the latest stable tag from
+[Releases](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases).
+Installing a tagged release is recommended; `main` is the next-release branch.
 
 The installer copies `alibaba-token-plan/` to:
 
@@ -155,7 +174,25 @@ HERMES_AGENT_REPO=/path/to/hermes-agent \
 bash -n install.sh
 ```
 
-CI runs standalone profile, catalogue, installer, and current-Hermes integration tests on Python 3.11, Hermes' minimum supported Python version.
+Required CI runs standalone profile, catalogue, installer, and PR-policy tests
+on Linux and macOS, plus integration tests against Hermes v0.18.2 and v0.19.0.
+A separate weekly advisory workflow tests current Hermes `main`.
+
+## Contributing and support
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
+- Use the [issue chooser](https://github.com/oliver-mee/hermes-alibaba-token-plan/issues/new/choose)
+  for bugs, setup help, and feature requests.
+- New features may be implemented without prior approval, but maintainer
+  approval is required before merge.
+- Report vulnerabilities privately as described in
+  [SECURITY.md](SECURITY.md).
+- Maintainer releases follow [RELEASING.md](RELEASING.md).
+
+The
+[Alibaba Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
+publishes the measured catalogue, capabilities, pricing, and probe evidence
+used to maintain this plugin.
 
 ## Official sources
 

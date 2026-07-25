@@ -1,0 +1,47 @@
+name: PR policy
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  policy:
+    name: PR Policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted base revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - name: Validate pull request body
+        id: policy
+        continue-on-error: true
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: python .github/scripts/check_pr_body.py
+      - name: Explain required correction
+        if: steps.policy.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          printf '%s\n' \
+            '<!-- pr-policy-comment -->' \
+            'The pull request body does not match a repository template.' \
+            '' \
+            'Please use the matching [fix](https://github.com/oliver-mee/hermes-alibaba-token-plan/blob/main/.github/PULL_REQUEST_TEMPLATE/fix.md), [feature](https://github.com/oliver-mee/hermes-alibaba-token-plan/blob/main/.github/PULL_REQUEST_TEMPLATE/feature.md), or [maintenance](https://github.com/oliver-mee/hermes-alibaba-token-plan/blob/main/.github/PULL_REQUEST_TEMPLATE/maintenance.md) template. Keep its hidden marker, link an issue, report every validation result honestly, and disclose AI assistance.' \
+            > /tmp/pr-policy-comment.md
+          gh pr comment "$PR_URL" --body-file /tmp/pr-policy-comment.md --edit-last --create-if-none
+      - name: Enforce policy result
+        if: steps.policy.outcome == 'failure'
+        run: exit 1
