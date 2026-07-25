@@ -1,14 +1,7 @@
 """Integration tests against a real Hermes checkout.
 
-The standalone tests use a small ProviderProfile double. These tests exercise the
-actual discovery, auth registry, runtime credential resolver, model picker,
-auxiliary-model lookup, and doctor catalog using a disposable HERMES_HOME.
-No network calls or real credentials are used.
-
-Set HERMES_AGENT_REPO to a current Hermes checkout to enable the lane::
-
-    HERMES_AGENT_REPO=/path/to/hermes-agent python -m pytest -q \
-        tests/test_current_hermes_integration.py
+Set ``HERMES_AGENT_REPO`` to current Hermes main or an installed checkout.
+The probe uses synthetic credentials and replaces the network catalogue call.
 """
 
 from __future__ import annotations
@@ -28,141 +21,209 @@ HERMES_AGENT_REPO = os.environ.get("HERMES_AGENT_REPO", "").strip()
 
 if not HERMES_AGENT_REPO or not Path(HERMES_AGENT_REPO).is_dir():
     pytest.skip(
-        "current-Hermes integration skipped: set HERMES_AGENT_REPO to a Hermes checkout",
+        "Hermes integration skipped: set HERMES_AGENT_REPO to a Hermes checkout",
         allow_module_level=True,
     )
 
 
 _PROBE = r'''
 import os
-from pathlib import Path
 
-from providers import get_provider_profile
+from agent.auxiliary_client import _get_aux_model_for_provider
+from agent.model_metadata import _infer_provider_from_url
+from agent.transports.chat_completions import ChatCompletionsTransport
 from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credentials
 from hermes_cli.doctor import _build_apikey_providers_list
 from hermes_cli.models import CANONICAL_PROVIDERS, provider_model_ids
-from agent.auxiliary_client import _get_aux_model_for_provider
-from agent.transports.chat_completions import ChatCompletionsTransport
+from providers import get_provider_profile
+from providers.base import ProviderProfile
 
-expected_models = (
+personal = (
     "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
-    "glm-5.2",
     "deepseek-v4-pro",
+    "glm-5.2",
 )
-expected_env = (
+team = (
+    "qwen3.8-max-preview",
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "qwen3.6-plus",
+    "qwen3.6-flash",
+    "deepseek-v4-pro",
+    "deepseek-v4-flash",
+    "deepseek-v3.2",
+    "kimi-k2.7-code",
+    "kimi-k2.6",
+    "kimi-k2.5",
+    "glm-5.2",
+    "glm-5.1",
+    "glm-5",
+    "MiniMax-M2.5",
+)
+global_env = (
     "QWEN_TOKEN_PLAN_API_KEY",
     "BAILIAN_TOKEN_PLAN_API_KEY",
     "ALIBABA_TOKEN_PLAN_API_KEY",
     "ALIBABA_TOKEN_PLAN_BASE_URL",
 )
+cn_env = ("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_BASE_URL")
+global_url = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
+cn_url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 
-profile = get_provider_profile("alibaba-token-plan")
-assert profile is not None
-assert profile.name == "alibaba-token-plan"
-assert profile.aliases == (
-    "alibaba_token_plan",
-    "aliyun-token-plan",
-    "token-plan",
-    "qwen-token-plan",
-    "qwencloud-token-plan",
-    "bailian-token-plan",
-)
-assert profile.env_vars == expected_env
-assert "DASHSCOPE_API_KEY" not in profile.env_vars
-assert profile.base_url == "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-assert profile.fallback_models == expected_models
-assert profile.default_aux_model == "qwen3.6-flash"
-assert profile.supports_health_check is False
-assert profile.fetch_models(api_key="synthetic-key") is None
-for alias in profile.aliases:
-    assert get_provider_profile(alias) is profile
+global_profile = get_provider_profile("alibaba-token-plan")
+cn_profile = get_provider_profile("alibaba-token-plan-cn")
+assert global_profile is not None and cn_profile is not None
+assert global_profile.__class__ is cn_profile.__class__
+assert global_profile.api_mode == cn_profile.api_mode == "chat_completions"
+assert global_profile.base_url == global_url
+assert cn_profile.base_url == cn_url
+assert global_profile.env_vars == global_env
+assert cn_profile.env_vars == cn_env
+assert global_profile.fallback_models == cn_profile.fallback_models == personal
+assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
+assert global_profile.supports_health_check is cn_profile.supports_health_check is False
+assert "DASHSCOPE_API_KEY" not in global_profile.env_vars
 
-# Profile hooks run through Hermes' actual Chat Completions transport. The
-# Token-only Qwen3.8 preview stays in always-thinking mode even if a stale user
-# setting asks to disable it; qwen3.7 preserves defaults until explicitly set.
-transport = ChatCompletionsTransport()
-qwen38_kwargs = transport.build_kwargs(
-    model="qwen3.8-max-preview",
-    messages=[{"role": "user", "content": "ping"}],
-    provider_profile=profile,
-    reasoning_config={"enabled": False, "effort": "max"},
-    supports_reasoning=True,
-)
-assert qwen38_kwargs["extra_body"] == {
-    "enable_thinking": True,
-    "reasoning_effort": "xhigh",
-}
-qwen37_default = transport.build_kwargs(
-    model="qwen3.7-plus",
-    messages=[{"role": "user", "content": "ping"}],
-    provider_profile=profile,
-    reasoning_config=None,
-    supports_reasoning=True,
-)
-assert "extra_body" not in qwen37_default
-qwen37_disabled = transport.build_kwargs(
-    model="qwen3.7-plus",
-    messages=[{"role": "user", "content": "ping"}],
-    provider_profile=profile,
-    reasoning_config={"enabled": False},
-    supports_reasoning=True,
-)
-assert qwen37_disabled["extra_body"] == {"enable_thinking": False}
+for profile in (global_profile, cn_profile):
+    assert get_provider_profile(profile.name) is profile
+    for alias in profile.aliases:
+        assert get_provider_profile(alias) is profile
+    assert any(p.slug == profile.name for p in CANONICAL_PROVIDERS)
+    assert _get_aux_model_for_provider(profile.name) == "qwen3.6-flash"
 
-# The real auth registry is auto-extended from the discovered plugin profile.
-auth = PROVIDER_REGISTRY["alibaba-token-plan"]
-assert auth.api_key_env_vars == expected_env[:3]
-assert auth.base_url_env_var == expected_env[-1]
-for alias in profile.aliases:
-    assert PROVIDER_REGISTRY[alias] is auth
+assert _infer_provider_from_url(global_url) == "alibaba-token-plan"
+assert _infer_provider_from_url(cn_url) == "alibaba-token-plan-cn"
 
-# Each supported credential name wins in documented order, and a PAYG key is
-# never accepted as a Token Plan credential.
-for name in expected_env:
+global_auth = PROVIDER_REGISTRY["alibaba-token-plan"]
+assert global_auth.api_key_env_vars == global_env[:3]
+assert global_auth.base_url_env_var == global_env[-1]
+cn_auth = PROVIDER_REGISTRY["alibaba-token-plan-cn"]
+assert cn_auth.api_key_env_vars == cn_env[:1]
+assert cn_auth.base_url_env_var == cn_env[-1]
+
+for name in (*global_env, *cn_env, "DASHSCOPE_API_KEY"):
     os.environ.pop(name, None)
-os.environ["QWEN_TOKEN_PLAN_API_KEY"] = "synthetic-qwen-token-plan-key"
-creds = resolve_api_key_provider_credentials("alibaba-token-plan")
-assert creds["api_key"] == "synthetic-qwen-token-plan-key"
-assert creds["base_url"] == profile.base_url
-assert creds["source"] == "QWEN_TOKEN_PLAN_API_KEY"
-os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
-os.environ["BAILIAN_TOKEN_PLAN_API_KEY"] = "synthetic-bailian-token-plan-key"
-assert resolve_api_key_provider_credentials("alibaba-token-plan")["api_key"] == "synthetic-bailian-token-plan-key"
-os.environ.pop("BAILIAN_TOKEN_PLAN_API_KEY", None)
-os.environ["ALIBABA_TOKEN_PLAN_API_KEY"] = "synthetic-legacy-token-plan-key"
-assert resolve_api_key_provider_credentials("alibaba-token-plan")["api_key"] == "synthetic-legacy-token-plan-key"
-for name in expected_env:
+
+for index, name in enumerate(global_env[:3]):
+    for key_name in global_env[:3]:
+        os.environ.pop(key_name, None)
+    os.environ[name] = f"synthetic-key-{index}"
+    creds = resolve_api_key_provider_credentials("alibaba-token-plan")
+    assert creds["api_key"] == f"synthetic-key-{index}"
+    assert creds["source"] == name
+
+for name in global_env:
     os.environ.pop(name, None)
-os.environ["DASHSCOPE_API_KEY"] = "synthetic-payg-key-must-not-work"
+os.environ["DASHSCOPE_API_KEY"] = "synthetic-payg-key"
 assert resolve_api_key_provider_credentials("alibaba-token-plan")["api_key"] == ""
 os.environ.pop("DASHSCOPE_API_KEY", None)
 
-# With no Token Plan credential, picker discovery must stay offline and return
-# the conservative profile fallback exactly; this does not call /models.
-assert provider_model_ids("alibaba-token-plan") == list(expected_models)
-assert _get_aux_model_for_provider("alibaba-token-plan") == "qwen3.6-flash"
-assert any(p.slug == "alibaba-token-plan" for p in CANONICAL_PROVIDERS)
+# No credential means the conservative Personal fallback and no fetch.
+assert provider_model_ids("alibaba-token-plan") == list(personal)
 
-# supports_health_check=False is carried through the real doctor inventory.
-rows = [row for row in _build_apikey_providers_list() if row[0] == profile.display_name]
-assert len(rows) == 1, rows
-assert rows[0][1] == expected_env[:3]
-assert rows[0][2] is None or rows[0][2].endswith("/models")
-assert rows[0][4] is False
-print("current Hermes Token Plan integration probe: PASS")
+original_fetch = ProviderProfile.fetch_models
+try:
+    os.environ["QWEN_TOKEN_PLAN_API_KEY"] = "synthetic-token-plan-key"
+
+    ProviderProfile.fetch_models = lambda self, **kwargs: [
+        "wan2.7-image",
+        "unknown-preview",
+        *reversed(personal),
+    ]
+    assert provider_model_ids("alibaba-token-plan") == list(personal)
+
+    ProviderProfile.fetch_models = lambda self, **kwargs: [
+        "happyhorse-1.1-t2v",
+        *reversed(team),
+        "qwen-image-2.0",
+    ]
+    # The plugin boundary preserves canonical order. Current Hermes main
+    # prepends fallback_models before merging live-only entries, while 0.18.2
+    # returns the filtered live list directly; both must expose exactly Team.
+    assert global_profile.fetch_models(api_key="synthetic") == list(team)
+    assert set(provider_model_ids("alibaba-token-plan")) == set(team)
+
+    ProviderProfile.fetch_models = lambda self, **kwargs: ["unknown", "wan2.7-image"]
+    assert provider_model_ids("alibaba-token-plan") == list(personal)
+
+    ProviderProfile.fetch_models = lambda self, **kwargs: None
+    assert provider_model_ids("alibaba-token-plan") == list(personal)
+
+    os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
+    os.environ["ALIBABA_TOKEN_PLAN_CN_API_KEY"] = "synthetic-cn-key"
+    ProviderProfile.fetch_models = lambda self, **kwargs: list(reversed(team))
+    assert cn_profile.fetch_models(api_key="synthetic") == list(team)
+    assert set(provider_model_ids("alibaba-token-plan-cn")) == set(team)
+finally:
+    ProviderProfile.fetch_models = original_fetch
+    os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
+    os.environ.pop("ALIBABA_TOKEN_PLAN_CN_API_KEY", None)
+
+transport = ChatCompletionsTransport()
+
+def extra_body(profile, model, config):
+    kwargs = transport.build_kwargs(
+        model=model,
+        messages=[{"role": "user", "content": "ping"}],
+        provider_profile=profile,
+        reasoning_config=config,
+        supports_reasoning=True,
+    )
+    return kwargs.get("extra_body", {})
+
+for model in (model for model in team if model not in {"qwen3.8-max-preview", "MiniMax-M2.5"}):
+    assert extra_body(global_profile, model, None) == {}
+    assert extra_body(global_profile, model, {"effort": "high"}) == {}
+    assert extra_body(global_profile, model, {"enabled": True}) == {"enable_thinking": True}
+    assert extra_body(cn_profile, model, {"enabled": False}) == {"enable_thinking": False}
+
+assert extra_body(
+    global_profile,
+    "qwen3.8-max-preview",
+    {"enabled": False, "effort": "minimal"},
+) == {"reasoning_effort": "low"}
+assert extra_body(
+    global_profile,
+    "qwen3.8-max-preview",
+    {"enabled": False, "effort": "max"},
+) == {"reasoning_effort": "xhigh"}
+assert extra_body(
+    global_profile,
+    "qwen3.8-max-preview",
+    {"enabled": False, "effort": "none"},
+) == {}
+assert extra_body(
+    global_profile,
+    "MiniMax-M2.5",
+    {"enabled": False},
+) == {}
+assert extra_body(
+    global_profile,
+    "future-model",
+    {"enabled": False, "effort": "high"},
+) == {}
+
+doctor_rows = {
+    row[0]: row
+    for row in _build_apikey_providers_list()
+    if row[0] in {global_profile.display_name, cn_profile.display_name}
+}
+assert set(doctor_rows) == {global_profile.display_name, cn_profile.display_name}
+assert all(row[4] is False for row in doctor_rows.values())
+
+print("Hermes Token Plan integration probe: PASS")
 '''
 
 
-def test_current_hermes_discovery_and_runtime(tmp_path: Path) -> None:
+def test_hermes_discovery_and_runtime(tmp_path: Path) -> None:
     hermes_repo = Path(HERMES_AGENT_REPO).resolve()
     plugin_home = tmp_path / "hermes-home"
     plugin_dir = plugin_home / "plugins" / "model-providers"
     plugin_dir.mkdir(parents=True)
-    for name in ("alibaba-token-plan", "alibaba-token-plan-cn"):
-        shutil.copytree(REPO / name, plugin_dir / name)
+    shutil.copytree(REPO / "alibaba-token-plan", plugin_dir / "alibaba-token-plan")
 
     env = os.environ.copy()
     env["HERMES_HOME"] = str(plugin_home)
@@ -172,6 +233,8 @@ def test_current_hermes_discovery_and_runtime(tmp_path: Path) -> None:
         "BAILIAN_TOKEN_PLAN_API_KEY",
         "ALIBABA_TOKEN_PLAN_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
+        "ALIBABA_TOKEN_PLAN_CN_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
         "DASHSCOPE_API_KEY",
     ):
         env.pop(name, None)
@@ -182,11 +245,11 @@ def test_current_hermes_discovery_and_runtime(tmp_path: Path) -> None:
         env=env,
         text=True,
         capture_output=True,
-        timeout=45,
+        timeout=60,
         check=False,
     )
     assert proc.returncode == 0, (
-        f"current Hermes integration failed (exit {proc.returncode})\n"
+        f"Hermes integration failed (exit {proc.returncode})\n"
         f"stdout:\n{proc.stdout}\nstderr:\n{proc.stderr}"
     )
-    assert "current Hermes Token Plan integration probe: PASS" in proc.stdout
+    assert "Hermes Token Plan integration probe: PASS" in proc.stdout

@@ -1,5 +1,0 @@
-name: alibaba-token-plan-cn-provider
-kind: model-provider
-version: 1.2.0
-description: Legacy Alibaba Cloud Token Plan China gateway compatibility profile
-author: Oliver Mee

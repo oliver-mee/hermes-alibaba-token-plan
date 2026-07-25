@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-# Install, verify, or uninstall the standalone Qwen Cloud Token Plan plugins.
-#
-# The script is intentionally non-interactive. It only operates on the two
-# exact model-provider destinations named below; it never searches for or
-# deletes arbitrary Hermes/plugin directories.
+# Install, verify, or uninstall the consolidated Qwen Cloud Token Plan plugin.
 set -euo pipefail
 
 HERMES_HOME="${HERMES_HOME:-${HOME:?Set HERMES_HOME or HOME}}"
 DEST="$HERMES_HOME/plugins/model-providers"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_NAMES=("alibaba-token-plan" "alibaba-token-plan-cn")
+PLUGIN_NAME="alibaba-token-plan"
+LEGACY_NAME="alibaba-token-plan-cn"
 
 case "${1:-install}" in
   install) ACTION=install ;;
@@ -18,9 +15,9 @@ case "${1:-install}" in
   -h|--help)
     printf '%s\n' \
       "Usage: HERMES_HOME=/path ./install.sh [install|--verify|--uninstall]" \
-      "  install     Install both known provider directories (default)." \
-      "  --verify    Verify both installed directories and their required files." \
-      "  --uninstall Move both installed directories to a hidden recovery backup." \
+      "  install     Install or upgrade the consolidated provider plugin." \
+      "  --verify    Verify installed files and legacy-profile migration." \
+      "  --uninstall Move installed provider directories to recovery backups."
     exit 0
     ;;
   *)
@@ -29,37 +26,26 @@ case "${1:-install}" in
     ;;
 esac
 
-# Refuse ambiguous or dangerous destinations before any filesystem mutation.
 if [[ -z "$HERMES_HOME" || "$HERMES_HOME" == "/" || "$DEST" == "/plugins/model-providers" ]]; then
   printf 'error: refusing unsafe HERMES_HOME destination\n' >&2
   exit 2
 fi
 
-# Do not follow writable plugin-directory symlinks. HERMES_HOME itself may be
-# a legitimate symlink, but its plugin tree must be an ordinary directory so
-# install/backup operations cannot be redirected outside the selected home.
 if [[ -L "$HERMES_HOME/plugins" || -L "$DEST" ]]; then
   printf 'error: refusing symlinked Hermes plugin destination\n' >&2
   exit 2
 fi
 
-for name in "${PLUGIN_NAMES[@]}"; do
-  source_dir="$SRC/$name"
-  target_dir="$DEST/$name"
-  if [[ -L "$source_dir" || ! -d "$source_dir" || ! -f "$source_dir/__init__.py" || ! -f "$source_dir/plugin.yaml" ]]; then
-    printf 'error: source plugin is incomplete: %s\n' "$source_dir" >&2
-    exit 1
-  fi
-  # These names are fixed above; keeping this check next to the path mutation
-  # makes accidental future expansion of the script fail closed.
-  case "$name" in
-    alibaba-token-plan|alibaba-token-plan-cn) ;;
-    *) printf 'error: refusing unknown plugin destination\n' >&2; exit 2 ;;
-  esac
-done
+source_dir="$SRC/$PLUGIN_NAME"
+if [[ -L "$source_dir" || ! -d "$source_dir" || ! -f "$source_dir/__init__.py" || ! -f "$source_dir/plugin.yaml" ]]; then
+  printf 'error: source plugin is incomplete: %s\n' "$source_dir" >&2
+  exit 1
+fi
 
 backup_root="$DEST/.backups"
 backup_stamp="$(date -u +%Y%m%dT%H%M%SZ)-$$"
+target_dir="$DEST/$PLUGIN_NAME"
+legacy_dir="$DEST/$LEGACY_NAME"
 
 if [[ -L "$backup_root" ]]; then
   printf 'error: refusing symlinked plugin backup destination\n' >&2
@@ -67,11 +53,8 @@ if [[ -L "$backup_root" ]]; then
 fi
 
 verify_plugin() {
-  local name="$1"
-  local source_dir="$SRC/$name"
-  local target_dir="$DEST/$name"
-  if [[ ! -d "$target_dir" ]]; then
-    printf 'error: missing installed plugin: %s\n' "$target_dir" >&2
+  if [[ -L "$target_dir" || ! -d "$target_dir" ]]; then
+    printf 'error: missing or symlinked installed plugin: %s\n' "$target_dir" >&2
     return 1
   fi
   for required in __init__.py plugin.yaml; do
@@ -84,12 +67,14 @@ verify_plugin() {
       return 1
     fi
   done
+  if [[ -e "$legacy_dir" || -L "$legacy_dir" ]]; then
+    printf 'error: legacy standalone plugin still installed: %s\n' "$legacy_dir" >&2
+    return 1
+  fi
 }
 
 if [[ "$ACTION" == verify ]]; then
-  for name in "${PLUGIN_NAMES[@]}"; do
-    verify_plugin "$name"
-  done
+  verify_plugin
   printf 'Verified Qwen Cloud Token Plan plugin files in %s\n' "$DEST"
   exit 0
 fi
@@ -98,63 +83,74 @@ mkdir -p "$DEST"
 
 if [[ "$ACTION" == uninstall ]]; then
   mkdir -p "$backup_root"
-  for name in "${PLUGIN_NAMES[@]}"; do
-    target_dir="$DEST/$name"
-    if [[ -e "$target_dir" || -L "$target_dir" ]]; then
+  for dir in "$target_dir" "$legacy_dir"; do
+    if [[ -e "$dir" || -L "$dir" ]]; then
+      name="${dir##*/}"
       recovery_dir="$backup_root/${name}.${backup_stamp}"
-      mv -- "$target_dir" "$recovery_dir"
-      printf 'Removed %s (recovery copy: %s)\n' "$target_dir" "$recovery_dir"
+      mv -- "$dir" "$recovery_dir"
+      printf 'Removed %s (recovery copy: %s)\n' "$dir" "$recovery_dir"
     else
-      printf 'Already absent: %s\n' "$target_dir"
+      printf 'Already absent: %s\n' "$dir"
     fi
   done
   exit 0
 fi
 
-install_plugin() {
-  local name="$1"
-  local source_dir="$SRC/$name"
-  local target_dir="$DEST/$name"
-  local staging_dir="$DEST/.${name}.install-${backup_stamp}"
-  local previous_dir=""
+staging_dir="$DEST/.${PLUGIN_NAME}.install-${backup_stamp}"
+main_backup=""
+legacy_backup=""
 
-  # A staging directory is an exact, generated path under the known target
-  # parent. It is the only path this function may remove.
-  if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
-    rm -rf -- "$staging_dir"
-  fi
-  cp -a -- "$source_dir" "$staging_dir"
+if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
+  printf 'error: staging destination already exists: %s\n' "$staging_dir" >&2
+  exit 1
+fi
+cp -a -- "$source_dir" "$staging_dir"
 
+rollback_install() {
+  mkdir -p "$backup_root"
   if [[ -e "$target_dir" || -L "$target_dir" ]]; then
-    previous_dir="$backup_root/${name}.${backup_stamp}"
-    mkdir -p "$backup_root"
-    mv -- "$target_dir" "$previous_dir"
+    mv -- "$target_dir" "$backup_root/${PLUGIN_NAME}.failed-${backup_stamp}" || true
   fi
-
-  if ! mv -- "$staging_dir" "$target_dir"; then
-    if [[ -n "$previous_dir" && ! -e "$target_dir" ]]; then
-      mv -- "$previous_dir" "$target_dir" || true
-    fi
-    rm -rf -- "$staging_dir"
-    return 1
+  if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
+    mv -- "$staging_dir" "$backup_root/${PLUGIN_NAME}.staging-${backup_stamp}" || true
   fi
-
-  if ! verify_plugin "$name"; then
-    rm -rf -- "$target_dir"
-    if [[ -n "$previous_dir" && -e "$previous_dir" ]]; then
-      mv -- "$previous_dir" "$target_dir" || true
-    fi
-    return 1
+  if [[ -n "$main_backup" && -e "$main_backup" ]]; then
+    mv -- "$main_backup" "$target_dir" || true
   fi
-
-  if [[ -n "$previous_dir" ]]; then
-    printf 'Upgraded %s (previous copy: %s)\n' "$target_dir" "$previous_dir"
-  else
-    printf 'Installed %s\n' "$target_dir"
+  if [[ -n "$legacy_backup" && -e "$legacy_backup" ]]; then
+    mv -- "$legacy_backup" "$legacy_dir" || true
   fi
 }
 
-for name in "${PLUGIN_NAMES[@]}"; do
-  install_plugin "$name"
-done
+if [[ -e "$target_dir" || -L "$target_dir" ]]; then
+  mkdir -p "$backup_root"
+  main_backup="$backup_root/${PLUGIN_NAME}.${backup_stamp}"
+  if ! mv -- "$target_dir" "$main_backup"; then
+    rollback_install
+    exit 1
+  fi
+fi
+
+if [[ -e "$legacy_dir" || -L "$legacy_dir" ]]; then
+  mkdir -p "$backup_root"
+  legacy_backup="$backup_root/${LEGACY_NAME}.${backup_stamp}"
+  if ! mv -- "$legacy_dir" "$legacy_backup"; then
+    rollback_install
+    exit 1
+  fi
+fi
+
+if ! mv -- "$staging_dir" "$target_dir" || ! verify_plugin; then
+  rollback_install
+  exit 1
+fi
+
+if [[ -n "$main_backup" ]]; then
+  printf 'Upgraded %s (previous copy: %s)\n' "$target_dir" "$main_backup"
+else
+  printf 'Installed %s\n' "$target_dir"
+fi
+if [[ -n "$legacy_backup" ]]; then
+  printf 'Migrated legacy profile %s (recovery copy: %s)\n' "$legacy_dir" "$legacy_backup"
+fi
 printf 'Verified Qwen Cloud Token Plan plugin files in %s\n' "$DEST"

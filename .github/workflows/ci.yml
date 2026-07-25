@@ -7,10 +7,15 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   standalone:
     name: Standalone plugin tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out plugin
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -20,29 +25,13 @@ jobs:
           python-version: "3.11"
       - name: Install test dependency
         run: python -m pip install pytest==9.1.1
-      - name: Run standalone contract tests
-        run: python -m pytest tests/test_profiles.py -q
-      - name: Exercise installer in a temporary Hermes home
-        run: |
-          hermes_home="$(mktemp -d)"
-          trap 'rm -rf "$hermes_home"' EXIT
-          HERMES_HOME="$hermes_home" ./install.sh
-          HERMES_HOME="$hermes_home" ./install.sh --verify
-          HERMES_HOME="$hermes_home" ./install.sh --uninstall
-          test ! -e "$hermes_home/plugins/model-providers/alibaba-token-plan"
-          test ! -e "$hermes_home/plugins/model-providers/alibaba-token-plan-cn"
-          unsafe_home="$(mktemp -d)"
-          outside="$(mktemp -d)"
-          mkdir -p "$unsafe_home/plugins"
-          ln -s "$outside" "$unsafe_home/plugins/model-providers"
-          if HERMES_HOME="$unsafe_home" ./install.sh; then
-            echo "installer unexpectedly followed a symlinked plugin destination" >&2
-            exit 1
-          fi
+      - name: Run standalone contract and installer tests
+        run: python -m pytest tests/test_profiles.py tests/test_installer.py -q
 
   current-hermes-integration:
     name: Current Hermes integration
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Check out plugin
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

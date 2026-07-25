@@ -46,6 +46,15 @@ class MockProviderProfile:
             return urlparse(self.base_url).hostname or ""
         return ""
 
+    def fetch_models(
+        self,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        timeout: float = 8.0,
+    ) -> list[str] | None:
+        return None
+
 
 REGISTERED: dict[str, MockProviderProfile] = {}
 
