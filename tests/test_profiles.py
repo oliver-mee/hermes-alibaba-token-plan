@@ -192,7 +192,7 @@ def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_pack
     ) == ({}, {})
 
 
-def test_single_manifest_is_version_1_1_0():
+def test_single_manifest_is_version_1_1_1():
     manifests = list(REPO.glob("alibaba-token-plan*/plugin.yaml"))
     assert manifests == [REPO / "alibaba-token-plan" / "plugin.yaml"]
     fields = dict(
@@ -201,4 +201,4 @@ def test_single_manifest_is_version_1_1_0():
         if ":" in line
     )
     assert fields["kind"].strip() == "model-provider"
-    assert fields["version"].strip() == "1.1.0"
+    assert fields["version"].strip() == "1.1.1"

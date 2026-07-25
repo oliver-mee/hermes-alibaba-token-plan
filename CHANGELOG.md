@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.1
+
+- Make the installer portable across Linux and macOS and normalise relative
+  `HERMES_HOME` paths before safety checks.
+- Test supported Hermes releases deterministically on Linux, macOS, Python
+  3.11, and Python 3.13, with current Hermes `main` checked separately.
+- Add public contributor, agent, security, and release guidance.
+- Add routed issue and pull request intake with an enforced, honest validation
+  record and explicit consent rules for AI-run paid checks.
+- Link runtime catalogue constants to the versioned public Token Plan Wiki
+  snapshot.
+
 ## 1.1.0
 
 - Preserve Personal and Team entitlement discovery while filtering it to the measured chat catalogue.
