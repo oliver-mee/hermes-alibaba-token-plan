@@ -178,6 +178,39 @@ Required CI runs standalone profile, catalogue, installer, and PR-policy tests
 on Linux and macOS, plus integration tests against Hermes v0.18.2 and v0.19.0.
 A separate weekly advisory workflow tests current Hermes `main`.
 
+## Roadmap
+
+### Responses API and built-in Qwen tools
+
+Add per-model Responses API routing for the five Qwen models that support it:
+
+- `qwen3.8-max-preview`
+- `qwen3.7-max`
+- `qwen3.7-plus`
+- `qwen3.6-plus`
+- `qwen3.6-flash`
+
+The remaining Token Plan models should continue using Chat Completions.
+
+The goal is to make QwenCloud's built-in tools available through Hermes:
+
+| Tool | Responses API type |
+|---|---|
+| Web search | `web_search` |
+| Code interpreter | `code_interpreter` |
+| Web scraping | `web_extractor` |
+| Text-to-image search | `web_search_image` |
+| Reverse image search | `image_search` |
+
+Tool availability varies by model. Hermes must explicitly request these tools
+and handle their response items; using the Responses API alone does not enable
+them automatically.
+
+Built-in tools can also incur additional charges. The recorded rates are
+$0.01 per web search and $0.008 per image search. Web scraping and code
+interpreter are currently marked as free for a limited time. Any implementation
+must make paid tool use visible and opt-in.
+
 ## Contributing and support
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a change.
@@ -198,6 +231,8 @@ used to maintain this plugin.
 
 - [Token Plan overview](https://docs.qwencloud.com/token-plan/overview)
 - [OpenAI-compatible Chat API](https://docs.qwencloud.com/api-reference/chat/openai-chat)
+- [OpenAI-compatible Responses API](https://docs.qwencloud.com/api-reference/chat/openai-responses)
+- [Token Plan built-in Harness tools](https://docs.qwencloud.com/token-plan/best-practices/built-in-tools)
 - [Team quick start](https://docs.qwencloud.com/token-plan/team/token-plan-team-quickstart)
 - [Personal Edition](https://docs.qwencloud.com/token-plan/personal/token-plan-personal-overview)
 - [Team Edition](https://docs.qwencloud.com/token-plan/team/token-plan-team-overview)
