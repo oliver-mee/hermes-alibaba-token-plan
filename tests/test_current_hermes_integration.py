@@ -39,14 +39,17 @@ from providers import get_provider_profile
 from providers.base import ProviderProfile
 
 personal = (
+    "qwen3.8-max",
     "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-flash-0731",
     "glm-5.2",
 )
 team = (
+    "qwen3.8-max",
     "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
@@ -54,6 +57,7 @@ team = (
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
+    "deepseek-v4-flash-0731",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",

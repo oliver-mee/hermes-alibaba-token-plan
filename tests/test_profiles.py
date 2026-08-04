@@ -13,14 +13,17 @@ REPO = Path(__file__).resolve().parent.parent
 GLOBAL_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
 CN_URL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 PERSONAL_MODELS = (
+    "qwen3.8-max",
     "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-flash-0731",
     "glm-5.2",
 )
 TEAM_MODELS = (
+    "qwen3.8-max",
     "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
@@ -28,6 +31,7 @@ TEAM_MODELS = (
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
+    "deepseek-v4-flash-0731",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
@@ -99,8 +103,10 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "wan2.7-image",
             "glm-5.2",
             "qwen3.7-plus",
+            "qwen3.8-max",
             "qwen3.8-max-preview",
             "deepseek-v4-pro",
+            "deepseek-v4-flash-0731",
             "qwen3.6-flash",
             "qwen3.7-max",
             "unknown-preview",

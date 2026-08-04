@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Add `qwen3.8-max` and `deepseek-v4-flash-0731` to the Personal and Team
+  chat catalogues in canonical order, with the documented additions dated
+  and evidenced in the plugin source and README. The Token Plan Wiki
+  snapshot has not been refreshed since v2026.7.25; placement follows the
+  official docs.qwencloud.com supported-model tables plus a metadata-only
+  live `/models` entitlement observation on the Global gateway on
+  2026-08-03 (no inference calls).
+- Classify `qwen3.8-max` (GA) as hybrid thinking, enabled by default, per
+  the QwenCloud model-release changelog. Its `reasoning_effort` support is
+  not measured yet, so no effort mapping is wired for it.
+
 ## 1.1.1
 
 - Make the installer portable across Linux and macOS and normalise relative
