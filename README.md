@@ -117,6 +117,18 @@ Authenticated `/models` discovery remains enabled. The gateway response is inter
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
+## Explicit prompt caching
+
+`qwen3.8-max-preview` supports explicit caching on the OpenAI-compatible Chat
+Completions API. The plugin declares Hermes' OpenAI-wire cache-marker layout
+for that model and returns no provider override for other models or API modes.
+See QwenCloud's first-party [context cache documentation](https://docs.qwencloud.com/developer-guides/text-generation/context-cache).
+
+This declaration requires a Hermes release that includes the optional
+`ProviderProfile.prompt_cache_policy()` hook. The currently supported Hermes
+releases can still load the plugin, but ignore this unknown method; they do not
+activate explicit markers through this declaration.
+
 ## Thinking behaviour
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:

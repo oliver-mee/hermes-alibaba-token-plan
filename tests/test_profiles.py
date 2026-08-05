@@ -176,6 +176,27 @@ def test_qwen38_effort_mapping_and_always_thinking_guard(mock_providers_package)
         assert "reasoning_effort" not in body
 
 
+def test_qwen38_cache_policy_is_model_and_transport_scoped(mock_providers_package):
+    mod = load_plugin()
+
+    for profile in (mod.alibaba_token_plan, mod.alibaba_token_plan_cn):
+        assert profile.prompt_cache_policy(
+            model=" QWEN3.8-MAX-PREVIEW ",
+            api_mode="chat_completions",
+            base_url=profile.base_url,
+        ) == (True, False)
+        assert profile.prompt_cache_policy(
+            model="qwen3.7-plus",
+            api_mode="chat_completions",
+            base_url=profile.base_url,
+        ) is None
+        assert profile.prompt_cache_policy(
+            model="qwen3.8-max-preview",
+            api_mode="anthropic_messages",
+            base_url=profile.base_url,
+        ) is None
+
+
 def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_package):
     profile = load_plugin().alibaba_token_plan
     assert profile.build_api_kwargs_extras(

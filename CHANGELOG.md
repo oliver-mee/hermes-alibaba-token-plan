@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Declare the documented `qwen3.8-max-preview` Chat Completions explicit-cache
+  policy through Hermes' optional provider-profile hook. Released Hermes
+  versions that predate the hook continue to load the plugin without activating
+  this declaration.
+
 ## 1.1.1
 
 - Make the installer portable across Linux and macOS and normalise relative

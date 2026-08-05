@@ -48,6 +48,7 @@ TEAM_MODELS = (
 
 _ALWAYS_THINKING_MODELS = {"qwen3.8-max-preview", "minimax-m2.5"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
+_EXPLICIT_CACHE_MODELS = {"qwen3.8-max-preview"}
 
 
 class QwenTokenPlanProfile(ProviderProfile):
@@ -75,6 +76,19 @@ class QwenTokenPlanProfile(ProviderProfile):
             return None
         live_ids = {str(model).strip().lower() for model in live}
         return [model for model in TEAM_MODELS if model.lower() in live_ids]
+
+    def prompt_cache_policy(
+        self,
+        *,
+        model: str | None = None,
+        api_mode: str | None = None,
+        base_url: str | None = None,
+    ) -> tuple[bool, bool] | None:
+        """Enable documented Chat explicit caching with OpenAI-wire markers."""
+        model_name = str(model or "").strip().lower()
+        if api_mode == "chat_completions" and model_name in _EXPLICIT_CACHE_MODELS:
+            return True, False
+        return None
 
     def build_api_kwargs_extras(
         self,
