@@ -2,7 +2,7 @@
 # Install, verify, or uninstall the consolidated Qwen Cloud Token Plan plugin.
 set -euo pipefail
 
-HERMES_HOME="${HERMES_HOME:-${HOME:?Set HERMES_HOME or HOME}}"
+HERMES_HOME="${HERMES_HOME:-${HOME:?Set HERMES_HOME or HOME}/.hermes}"
 if [[ "$HERMES_HOME" != /* ]]; then
   HERMES_HOME="$PWD/$HERMES_HOME"
 fi
