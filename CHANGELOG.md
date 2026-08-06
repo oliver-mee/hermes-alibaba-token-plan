@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Replace the stale `qwen3.8-max-preview` catalogue entry with the
+  authenticated Global/Singapore gateway's production `qwen3.8-max` ID, and
+  keep `deepseek-v4-flash-0731` as the canonical live ID.
+- Treat `qwen3.8-max` as a hybrid-thinking model and remove preview-only
+  always-thinking and `reasoning_effort` handling.
+- Add exact model-scoped context metadata from official QwenCloud pages and
+  OpenRouter exact pages for catalogue models whose QwenCloud page lacks the
+  context field. Non-text audio/image endpoints remain unassigned rather than
+  receiving guessed text context limits.
+
 ## 1.1.1
 
 - Make the installer portable across Linux and macOS and normalise relative

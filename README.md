@@ -80,40 +80,49 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 
 ## Personal and Team discovery
 
-Authenticated `/models` discovery remains enabled. The gateway response is intersected with the measured 15-model Team chat allowlist. This excludes image, video, unknown, and not-yet-verified IDs while retaining the canonical catalogue order.
+Authenticated `/models` discovery remains enabled. The gateway response is intersected with the measured 16-model Team chat allowlist. This excludes image, video, unknown, and not-yet-verified IDs while retaining the canonical catalogue order.
 
-- Personal keys currently resolve to six chat models.
-- Team keys currently resolve to fifteen chat models.
-- If discovery fails or no key is configured, both providers use the Personal six as the conservative offline fallback.
+- Personal keys currently resolve to seven chat models.
+- Team keys currently resolve to sixteen chat models.
+- If discovery fails or no key is configured, both providers use the Personal seven as the conservative offline fallback.
 
 `supports_health_check` is deliberately disabled. A lapsed Token Plan key can still receive HTTP 200 and a full-looking `/models` response while every inference request is denied. Discovery is useful for the picker, but it is not proof that the subscription can call a model.
 
 ### Personal chat catalogue and offline fallback
 
-1. `qwen3.8-max-preview`
+1. `qwen3.8-max`
 2. `qwen3.7-max`
 3. `qwen3.7-plus`
 4. `qwen3.6-flash`
 5. `deepseek-v4-pro`
-6. `glm-5.2`
+6. `deepseek-v4-flash-0731`
+7. `glm-5.2`
 
 ### Team chat catalogue
 
-1. `qwen3.8-max-preview`
+1. `qwen3.8-max`
 2. `qwen3.7-max`
 3. `qwen3.7-plus`
 4. `qwen3.6-plus`
 5. `qwen3.6-flash`
 6. `deepseek-v4-pro`
 7. `deepseek-v4-flash`
-8. `deepseek-v3.2`
-9. `kimi-k2.7-code`
-10. `kimi-k2.6`
-11. `kimi-k2.5`
-12. `glm-5.2`
-13. `glm-5.1`
-14. `glm-5`
-15. `MiniMax-M2.5`
+8. `deepseek-v4-flash-0731`
+9. `deepseek-v3.2`
+10. `kimi-k2.7-code`
+11. `kimi-k2.6`
+12. `kimi-k2.5`
+13. `glm-5.2`
+14. `glm-5.1`
+15. `glm-5`
+16. `MiniMax-M2.5`
+
+`qwen3.8-max` (GA, released 2026-08-03) and `deepseek-v4-flash-0731`
+(released 2026-08-01) were confirmed listed and entitled on the Token Plan
+on 2026-08-03, after the v2026.7.25 wiki snapshot, at the positions shown
+by the official supported-model tables on docs.qwencloud.com; entitlement
+was confirmed by a metadata-only live `/models` observation on the Global
+gateway the same day.
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
@@ -121,14 +130,15 @@ Authenticated `/models` discovery remains enabled. The gateway response is inter
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:
 
-- The thirteen hybrid models receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
-- `qwen3.8-max-preview` and `MiniMax-M2.5` are always-thinking models. The plugin never sends `enable_thinking: false` to either.
-- Qwen3.8 effort maps as follows: `minimal` and `low` to `low`, `medium` to `medium`, and `high` or `max` to `xhigh`. `none` is ignored because Qwen3.8 cannot disable thinking.
+- The fifteen hybrid models receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
+- `MiniMax-M2.5` is the only always-thinking model. The plugin never sends `enable_thinking: false` to it.
+- `qwen3.8-max` is handled as a hybrid model. Its unverified `reasoning_effort` field is not sent.
+- `deepseek-v4-flash-0731` follows the measured hybrid `deepseek-v4` family behaviour; its handling is inferred from that family and has not been separately wire-probed.
 - Unknown models receive no provider-specific thinking fields.
 
-The plugin does not force a provider-wide vision flag. Hermes reads per-model metadata from models.dev. Seven current chat models accept image and video input:
+The plugin does not force a provider-wide vision flag. Hermes reads per-model metadata from models.dev. Seven current chat models accept image input:
 
-- `qwen3.8-max-preview`
+- `qwen3.8-max`
 - `qwen3.7-plus`
 - `qwen3.6-plus`
 - `qwen3.6-flash`
@@ -136,7 +146,24 @@ The plugin does not force a provider-wide vision flag. Hermes reads per-model me
 - `kimi-k2.6`
 - `kimi-k2.5`
 
-The other eight chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
+The other nine chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
+
+### Context metadata sources
+
+The Token Plan `/models` response exposes model IDs but not context metadata.
+For catalogue models whose QwenCloud page did not expose a context field, the
+plugin uses exact OpenRouter model pages checked on 2026-08-06:
+
+- `kimi-k2.6`: 262,144 tokens — [`moonshotai/kimi-k2.6`](https://openrouter.ai/moonshotai/kimi-k2.6)
+- `kimi-k2.5`: 262,144 tokens — [`moonshotai/kimi-k2.5`](https://openrouter.ai/moonshotai/kimi-k2.5)
+- `glm-5`: 204,800 tokens — [`z-ai/glm-5`](https://openrouter.ai/z-ai/glm-5)
+- `MiniMax-M2.5`: 204,800 tokens — [`minimax/minimax-m2.5`](https://openrouter.ai/minimax/minimax-m2.5)
+
+OpenRouter reports `qwen/qwen-audio-3.0-tts-plus` with a `0 token context
+window`; because this is an audio-output endpoint rather than a text context,
+the value is treated as not applicable and is not inserted as a zero-token
+text-model limit. No exact OpenRouter page was found for the realtime audio or
+Wan image IDs, so the plugin does not invent context values for them.
 
 ## Use
 
@@ -184,7 +211,7 @@ A separate weekly advisory workflow tests current Hermes `main`.
 
 Add per-model Responses API routing for the five Qwen models that support it:
 
-- `qwen3.8-max-preview`
+- `qwen3.8-max`
 - `qwen3.7-max`
 - `qwen3.7-plus`
 - `qwen3.6-plus`

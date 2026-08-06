@@ -13,21 +13,23 @@ REPO = Path(__file__).resolve().parent.parent
 GLOBAL_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
 CN_URL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 PERSONAL_MODELS = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-flash-0731",
     "glm-5.2",
 )
 TEAM_MODELS = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
+    "deepseek-v4-flash-0731",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
@@ -99,8 +101,10 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "wan2.7-image",
             "glm-5.2",
             "qwen3.7-plus",
+            "qwen3.8-max",
             "qwen3.8-max-preview",
             "deepseek-v4-pro",
+            "deepseek-v4-flash-0731",
             "qwen3.6-flash",
             "qwen3.7-max",
             "unknown-preview",
@@ -132,7 +136,7 @@ def test_discovery_handles_unknown_only_and_failed_fetch(
 
 def test_hybrid_models_only_receive_explicit_reasoning_toggle(mock_providers_package):
     profile = load_plugin().alibaba_token_plan
-    hybrid = [model for model in TEAM_MODELS if model not in {"qwen3.8-max-preview", "MiniMax-M2.5"}]
+    hybrid = [model for model in TEAM_MODELS if model != "MiniMax-M2.5"]
     for model in hybrid:
         assert profile.build_api_kwargs_extras(model=model, reasoning_config=None) == ({}, {})
         assert profile.build_api_kwargs_extras(
@@ -149,31 +153,49 @@ def test_hybrid_models_only_receive_explicit_reasoning_toggle(mock_providers_pac
         ) == ({"enable_thinking": False}, {})
 
 
-def test_qwen38_effort_mapping_and_always_thinking_guard(mock_providers_package):
+def test_qwen38_max_uses_hybrid_toggle_without_effort(mock_providers_package):
     profile = load_plugin().alibaba_token_plan
-    expected = {
-        "minimal": "low",
-        "low": "low",
-        "medium": "medium",
-        "high": "xhigh",
-        "max": "xhigh",
-        "xhigh": "xhigh",
-    }
-    for source, target in expected.items():
-        body, top_level = profile.build_api_kwargs_extras(
-            model="qwen3.8-max-preview",
-            reasoning_config={"enabled": False, "effort": source},
-        )
-        assert body == {"reasoning_effort": target}
-        assert top_level == {}
-
-    for config in ({"enabled": False}, {"enabled": False, "effort": "none"}):
+    for config, expected in (
+        ({"enabled": True}, {"enable_thinking": True}),
+        ({"enabled": False}, {"enable_thinking": False}),
+        ({"enabled": False, "effort": "high"}, {"enable_thinking": False}),
+    ):
         body, _ = profile.build_api_kwargs_extras(
-            model="qwen3.8-max-preview",
+            model="qwen3.8-max",
             reasoning_config=config,
         )
-        assert "enable_thinking" not in body
-        assert "reasoning_effort" not in body
+        assert body == expected
+
+
+def test_verified_context_lengths_are_applied_to_catalogue_models(
+    mock_providers_package, monkeypatch
+):
+    from agent.model_metadata import DEFAULT_CONTEXT_LENGTHS
+
+    expected = {
+        "qwen3.8-max": 1_000_000,
+        "qwen3.7-max": 1_000_000,
+        "qwen3.7-plus": 1_000_000,
+        "qwen3.6-plus": 1_000_000,
+        "qwen3.6-flash": 1_000_000,
+        "glm-5.2": 1_000_000,
+        "deepseek-v4-pro": 1_000_000,
+        "deepseek-v4-flash": 1_000_000,
+        "deepseek-v4-flash-0731": 1_000_000,
+        "deepseek-v3.2": 131_000,
+        "kimi-k2.7-code": 262_000,
+        "kimi-k2.6": 262_144,
+        "kimi-k2.5": 262_144,
+        "glm-5.1": 202_000,
+        "glm-5": 204_800,
+        "minimax-m2.5": 204_800,
+    }
+    for model in expected:
+        monkeypatch.setitem(DEFAULT_CONTEXT_LENGTHS, model, 131_072)
+
+    load_plugin()
+
+    assert {model: DEFAULT_CONTEXT_LENGTHS[model] for model in expected} == expected
 
 
 def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_package):
