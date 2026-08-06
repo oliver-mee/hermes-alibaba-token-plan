@@ -48,7 +48,20 @@ TEAM_MODELS = (
 
 _ALWAYS_THINKING_MODELS = {"qwen3.8-max-preview", "minimax-m2.5"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
-_EXPLICIT_CACHE_MODELS = {"qwen3.8-max-preview"}
+# Exact intersection of QwenCloud's explicit-cache table and this plugin's
+# Token Plan Team chat catalogue. The QwenCloud page also lists dated Qwen
+# snapshots, Coder/VL models, and aliases; those are intentionally excluded
+# because this provider does not advertise them in its canonical chat list.
+# Source checked 2026-08-06:
+# https://docs.qwencloud.com/developer-guides/text-generation/context-cache
+_EXPLICIT_CACHE_MODELS = {
+    "qwen3.8-max",
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "qwen3.6-plus",
+    "qwen3.6-flash",
+    "deepseek-v3.2",
+}
 
 
 class QwenTokenPlanProfile(ProviderProfile):
@@ -84,9 +97,10 @@ class QwenTokenPlanProfile(ProviderProfile):
         api_mode: str | None = None,
         base_url: str | None = None,
     ) -> tuple[bool, bool] | None:
-        """Enable documented Chat explicit caching with OpenAI-wire markers."""
+        """Enable documented Chat explicit caching for supported exact models."""
         model_name = str(model or "").strip().lower()
-        if api_mode == "chat_completions" and model_name in _EXPLICIT_CACHE_MODELS:
+        api_mode_name = str(api_mode or "").strip().lower()
+        if api_mode_name == "chat_completions" and model_name in _EXPLICIT_CACHE_MODELS:
             return True, False
         return None
 

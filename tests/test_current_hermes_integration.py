@@ -64,6 +64,14 @@ team = (
     "glm-5",
     "MiniMax-M2.5",
 )
+explicit_cache_models = (
+    "qwen3.8-max",
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "qwen3.6-plus",
+    "qwen3.6-flash",
+    "deepseek-v3.2",
+)
 global_env = (
     "QWEN_TOKEN_PLAN_API_KEY",
     "BAILIAN_TOKEN_PLAN_API_KEY",
@@ -89,13 +97,14 @@ assert global_profile.supports_health_check is cn_profile.supports_health_check 
 assert "DASHSCOPE_API_KEY" not in global_profile.env_vars
 
 for profile in (global_profile, cn_profile):
+    for model in explicit_cache_models:
+        assert profile.prompt_cache_policy(
+            model=model,
+            api_mode="chat_completions",
+            base_url=profile.base_url,
+        ) == (True, False)
     assert profile.prompt_cache_policy(
         model="qwen3.8-max-preview",
-        api_mode="chat_completions",
-        base_url=profile.base_url,
-    ) == (True, False)
-    assert profile.prompt_cache_policy(
-        model="qwen3.7-plus",
         api_mode="chat_completions",
         base_url=profile.base_url,
     ) is None
@@ -110,7 +119,7 @@ if hasattr(ProviderProfile, "prompt_cache_policy"):
             provider=profile.name,
             base_url=profile.base_url,
             api_mode="chat_completions",
-            model="qwen3.8-max-preview",
+            model="qwen3.8-max",
             _cache_disabled=False,
         )
         assert anthropic_prompt_cache_policy(agent) == (True, False)

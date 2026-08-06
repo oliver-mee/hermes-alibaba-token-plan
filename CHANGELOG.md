@@ -2,10 +2,13 @@
 
 ## Unreleased
 
-- Declare the documented `qwen3.8-max-preview` Chat Completions explicit-cache
-  policy through Hermes' optional provider-profile hook. Released Hermes
-  versions that predate the hook continue to load the plugin without activating
-  this declaration.
+- Declare QwenCloud's Chat Completions explicit-cache policy for the exact
+  production Token Plan chat IDs `qwen3.8-max`, `qwen3.7-max`, `qwen3.7-plus`,
+  `qwen3.6-plus`, `qwen3.6-flash`, and `deepseek-v3.2`. Released Hermes
+  versions that predate the optional provider-profile hook continue to load the
+  plugin without activating this declaration.
+- Keep QwenCloud's automatic implicit cache and Responses-API session cache
+  outside this Chat Completions provider hook.
 
 ## 1.1.1
 

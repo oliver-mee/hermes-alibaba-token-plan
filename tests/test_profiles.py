@@ -37,6 +37,14 @@ TEAM_MODELS = (
     "glm-5",
     "MiniMax-M2.5",
 )
+EXPLICIT_CACHE_MODELS = (
+    "qwen3.8-max",
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "qwen3.6-plus",
+    "qwen3.6-flash",
+    "deepseek-v3.2",
+)
 
 
 def load_plugin():
@@ -176,25 +184,33 @@ def test_qwen38_effort_mapping_and_always_thinking_guard(mock_providers_package)
         assert "reasoning_effort" not in body
 
 
-def test_qwen38_cache_policy_is_model_and_transport_scoped(mock_providers_package):
+def test_explicit_cache_policy_is_model_and_transport_scoped(mock_providers_package):
     mod = load_plugin()
 
     for profile in (mod.alibaba_token_plan, mod.alibaba_token_plan_cn):
-        assert profile.prompt_cache_policy(
-            model=" QWEN3.8-MAX-PREVIEW ",
-            api_mode="chat_completions",
-            base_url=profile.base_url,
-        ) == (True, False)
-        assert profile.prompt_cache_policy(
-            model="qwen3.7-plus",
-            api_mode="chat_completions",
-            base_url=profile.base_url,
-        ) is None
-        assert profile.prompt_cache_policy(
-            model="qwen3.8-max-preview",
-            api_mode="anthropic_messages",
-            base_url=profile.base_url,
-        ) is None
+        for model in EXPLICIT_CACHE_MODELS:
+            assert profile.prompt_cache_policy(
+                model=f" {model.upper()} ",
+                api_mode=" CHAT_COMPLETIONS ",
+                base_url=profile.base_url,
+            ) == (True, False)
+
+        for model in (
+            "qwen3.8-max-preview",
+            "deepseek-v4-pro",
+            "glm-5.2",
+            "MiniMax-M2.5",
+        ):
+            assert profile.prompt_cache_policy(
+                model=model,
+                api_mode="chat_completions",
+                base_url=profile.base_url,
+            ) is None
+            assert profile.prompt_cache_policy(
+                model=model,
+                api_mode="anthropic_messages",
+                base_url=profile.base_url,
+            ) is None
 
 
 def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_package):
