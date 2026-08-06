@@ -20,14 +20,13 @@ from providers.base import ProviderProfile
 # https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/v2026.7.25/data/models.json
 # Keep this order: it is the canonical catalogue order used by the picker.
 #
-# Additions after the v2026.7.25 snapshot (the wiki has not been refreshed
-# since), inserted at the positions shown by the official supported-model
-# tables on docs.qwencloud.com on 2026-08-03 and confirmed entitled by a
-# metadata-only live ``GET /models`` observation on the Global gateway on
-# the same day (no inference calls): qwen3.8-max, deepseek-v4-flash-0731.
+# The public wiki snapshot still names the preview model. The authenticated
+# Global/Singapore ``/models`` response checked on 2026-08-06 advertised the
+# GA ID ``qwen3.8-max`` and did not advertise the preview ID. Keep the live
+# production catalogue here; ``deepseek-v4-flash-0731`` is the canonical live
+# ID for that model family.
 PERSONAL_MODELS = (
     "qwen3.8-max",
-    "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
@@ -38,7 +37,6 @@ PERSONAL_MODELS = (
 
 TEAM_MODELS = (
     "qwen3.8-max",
-    "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
@@ -56,13 +54,10 @@ TEAM_MODELS = (
     "MiniMax-M2.5",
 )
 
-# qwen3.8-max (GA) is hybrid thinking, enabled by default, per the QwenCloud
-# model-release changelog of 2026-08-03, unlike its always-on preview, so it
-# stays out of this set and is handled by the hybrid branch below.
-_ALWAYS_THINKING_MODELS = {"qwen3.8-max-preview", "minimax-m2.5"}
-# deepseek-v4-flash-0731 inherits hybrid status from this set arithmetic; its
-# enable_thinking handling is inferred from the measured deepseek-v4 family
-# and has not been separately probed.
+# MiniMax is the only always-thinking model in the live Team catalogue.
+_ALWAYS_THINKING_MODELS = {"minimax-m2.5"}
+# qwen3.8-max and deepseek-v4-flash-0731 use the measured hybrid-thinking
+# request path. The latter inherits the measured deepseek-v4 family behaviour.
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
 
 
@@ -103,22 +98,6 @@ class QwenTokenPlanProfile(ProviderProfile):
         model_name = str(model or "").strip().lower()
         config = reasoning_config if isinstance(reasoning_config, dict) else {}
         body: dict[str, Any] = {}
-
-        # reasoning_effort is only measured for the preview; qwen3.8-max (GA)
-        # has not been probed for it, so the GA model intentionally falls
-        # through to the plain hybrid enable_thinking handling below.
-        if model_name == "qwen3.8-max-preview":
-            effort = str(config.get("effort") or "").strip().lower()
-            mapped_effort = {
-                "minimal": "low",
-                "low": "low",
-                "medium": "medium",
-                "high": "xhigh",
-                "xhigh": "xhigh",
-                "max": "xhigh",
-            }.get(effort)
-            if mapped_effort:
-                body["reasoning_effort"] = mapped_effort
 
         if model_name in _ALWAYS_THINKING_MODELS:
             if config.get("enabled") is True:
@@ -175,3 +154,54 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
 
 register_provider(alibaba_token_plan)
 register_provider(alibaba_token_plan_cn)
+
+# The Token Plan ``/models`` response exposes model IDs but not context
+# metadata. Hermes' generic endpoint probe therefore falls back to a family
+# default unless the provider supplies exact model-scoped values. QwenCloud
+# displays decimal values such as 1M/131K/202K/262K; OpenRouter exact pages
+# provide the binary-exact values recorded for Kimi, GLM, and MiniMax below.
+#
+# QwenCloud pages checked 2026-08-06:
+# https://www.qwencloud.com/models/qwen3.8-max
+# https://www.qwencloud.com/models/qwen3.7-max
+# https://www.qwencloud.com/models/qwen3.7-plus
+# https://www.qwencloud.com/models/qwen3.6-plus
+# https://www.qwencloud.com/models/qwen3.6-flash
+# https://www.qwencloud.com/models/glm-5.2
+# https://www.qwencloud.com/models/deepseek-v4-pro
+# https://www.qwencloud.com/models/deepseek-v4-flash
+# https://www.qwencloud.com/models/deepseek-v4-flash-0731
+# https://www.qwencloud.com/models/deepseek-v3.2
+# https://www.qwencloud.com/models/kimi-k2.7-code
+# https://www.qwencloud.com/models/glm-5.1
+#
+# OpenRouter exact pages checked 2026-08-06:
+# https://openrouter.ai/moonshotai/kimi-k2.6
+# https://openrouter.ai/moonshotai/kimi-k2.5
+# https://openrouter.ai/z-ai/glm-5
+# https://openrouter.ai/minimax/minimax-m2.5
+_TOKEN_PLAN_CONTEXT_LENGTHS: dict[str, int] = {
+    "qwen3.8-max": 1_000_000,
+    "qwen3.7-max": 1_000_000,
+    "qwen3.7-plus": 1_000_000,
+    "qwen3.6-plus": 1_000_000,
+    "qwen3.6-flash": 1_000_000,
+    "glm-5.2": 1_000_000,
+    "deepseek-v4-pro": 1_000_000,
+    "deepseek-v4-flash": 1_000_000,
+    "deepseek-v4-flash-0731": 1_000_000,
+    "deepseek-v3.2": 131_000,
+    "kimi-k2.7-code": 262_000,
+    "glm-5.1": 202_000,
+    "glm-5": 204_800,
+    "kimi-k2.6": 262_144,
+    "kimi-k2.5": 262_144,
+    "minimax-m2.5": 204_800,
+}
+
+try:
+    from agent.model_metadata import DEFAULT_CONTEXT_LENGTHS as _DCL
+
+    _DCL.update(_TOKEN_PLAN_CONTEXT_LENGTHS)
+except Exception:  # noqa: BLE001 — degrade silently on Hermes refactor
+    pass

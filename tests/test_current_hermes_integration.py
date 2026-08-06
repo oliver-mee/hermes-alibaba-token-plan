@@ -30,7 +30,7 @@ _PROBE = r'''
 import os
 
 from agent.auxiliary_client import _get_aux_model_for_provider
-from agent.model_metadata import _infer_provider_from_url
+from agent.model_metadata import DEFAULT_CONTEXT_LENGTHS, _infer_provider_from_url
 from agent.transports.chat_completions import ChatCompletionsTransport
 from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credentials
 from hermes_cli.doctor import _build_apikey_providers_list
@@ -40,7 +40,6 @@ from providers.base import ProviderProfile
 
 personal = (
     "qwen3.8-max",
-    "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
@@ -50,7 +49,6 @@ personal = (
 )
 team = (
     "qwen3.8-max",
-    "qwen3.8-max-preview",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
@@ -90,6 +88,9 @@ assert global_profile.fallback_models == cn_profile.fallback_models == personal
 assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
 assert global_profile.supports_health_check is cn_profile.supports_health_check is False
 assert "DASHSCOPE_API_KEY" not in global_profile.env_vars
+assert DEFAULT_CONTEXT_LENGTHS["qwen3.8-max"] == 1_000_000
+assert DEFAULT_CONTEXT_LENGTHS["kimi-k2.6"] == 262_144
+assert DEFAULT_CONTEXT_LENGTHS["glm-5"] == 204_800
 
 for profile in (global_profile, cn_profile):
     assert get_provider_profile(profile.name) is profile
@@ -178,7 +179,7 @@ def extra_body(profile, model, config):
     )
     return kwargs.get("extra_body", {})
 
-for model in (model for model in team if model not in {"qwen3.8-max-preview", "MiniMax-M2.5"}):
+for model in (model for model in team if model != "MiniMax-M2.5"):
     assert extra_body(global_profile, model, None) == {}
     assert extra_body(global_profile, model, {"effort": "high"}) == {}
     assert extra_body(global_profile, model, {"enabled": True}) == {"enable_thinking": True}
@@ -186,19 +187,14 @@ for model in (model for model in team if model not in {"qwen3.8-max-preview", "M
 
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "minimal"},
-) == {"reasoning_effort": "low"}
+    "qwen3.8-max",
+    {"enabled": True, "effort": "high"},
+) == {"enable_thinking": True}
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "max"},
-) == {"reasoning_effort": "xhigh"}
-assert extra_body(
-    global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "none"},
-) == {}
+    "qwen3.8-max",
+    {"enabled": False, "effort": "high"},
+) == {"enable_thinking": False}
 assert extra_body(
     global_profile,
     "MiniMax-M2.5",

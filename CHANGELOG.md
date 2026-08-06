@@ -2,16 +2,15 @@
 
 ## Unreleased
 
-- Add `qwen3.8-max` and `deepseek-v4-flash-0731` to the Personal and Team
-  chat catalogues in canonical order, with the documented additions dated
-  and evidenced in the plugin source and README. The Token Plan Wiki
-  snapshot has not been refreshed since v2026.7.25; placement follows the
-  official docs.qwencloud.com supported-model tables plus a metadata-only
-  live `/models` entitlement observation on the Global gateway on
-  2026-08-03 (no inference calls).
-- Classify `qwen3.8-max` (GA) as hybrid thinking, enabled by default, per
-  the QwenCloud model-release changelog. Its `reasoning_effort` support is
-  not measured yet, so no effort mapping is wired for it.
+- Replace the stale `qwen3.8-max-preview` catalogue entry with the
+  authenticated Global/Singapore gateway's production `qwen3.8-max` ID, and
+  keep `deepseek-v4-flash-0731` as the canonical live ID.
+- Treat `qwen3.8-max` as a hybrid-thinking model and remove preview-only
+  always-thinking and `reasoning_effort` handling.
+- Add exact model-scoped context metadata from official QwenCloud pages and
+  OpenRouter exact pages for catalogue models whose QwenCloud page lacks the
+  context field. Non-text audio/image endpoints remain unassigned rather than
+  receiving guessed text context limits.
 
 ## 1.1.1
 
