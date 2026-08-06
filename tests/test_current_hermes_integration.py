@@ -28,6 +28,7 @@ if not HERMES_AGENT_REPO or not Path(HERMES_AGENT_REPO).is_dir():
 
 _PROBE = r'''
 import os
+from types import SimpleNamespace
 
 from agent.auxiliary_client import _get_aux_model_for_provider
 from agent.model_metadata import _infer_provider_from_url
@@ -63,6 +64,14 @@ team = (
     "glm-5",
     "MiniMax-M2.5",
 )
+explicit_cache_models = (
+    "qwen3.8-max",
+    "qwen3.7-max",
+    "qwen3.7-plus",
+    "qwen3.6-plus",
+    "qwen3.6-flash",
+    "deepseek-v3.2",
+)
 global_env = (
     "QWEN_TOKEN_PLAN_API_KEY",
     "BAILIAN_TOKEN_PLAN_API_KEY",
@@ -86,6 +95,34 @@ assert global_profile.fallback_models == cn_profile.fallback_models == personal
 assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
 assert global_profile.supports_health_check is cn_profile.supports_health_check is False
 assert "DASHSCOPE_API_KEY" not in global_profile.env_vars
+
+for profile in (global_profile, cn_profile):
+    for model in explicit_cache_models:
+        assert profile.prompt_cache_policy(
+            model=model,
+            api_mode="chat_completions",
+            base_url=profile.base_url,
+        ) == (True, False)
+    assert profile.prompt_cache_policy(
+        model="qwen3.8-max-preview",
+        api_mode="chat_completions",
+        base_url=profile.base_url,
+    ) is None
+
+# Released Hermes versions can load the optional method but do not consume it.
+# Exercise the full resolver only once the generic core hook is available.
+if hasattr(ProviderProfile, "prompt_cache_policy"):
+    from agent.agent_runtime_helpers import anthropic_prompt_cache_policy
+
+    for profile in (global_profile, cn_profile):
+        agent = SimpleNamespace(
+            provider=profile.name,
+            base_url=profile.base_url,
+            api_mode="chat_completions",
+            model="qwen3.8-max",
+            _cache_disabled=False,
+        )
+        assert anthropic_prompt_cache_policy(agent) == (True, False)
 
 for profile in (global_profile, cn_profile):
     assert get_provider_profile(profile.name) is profile

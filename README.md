@@ -117,6 +117,40 @@ Authenticated `/models` discovery remains enabled. The gateway response is inter
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
+## Explicit prompt caching
+
+QwenCloud's first-party [context cache documentation](https://docs.qwencloud.com/developer-guides/text-generation/context-cache)
+lists explicit cache support for multiple model families. The exact production
+Token Plan chat IDs covered by this plugin declaration are:
+
+- `qwen3.8-max`
+- `qwen3.7-max`
+- `qwen3.7-plus`
+- `qwen3.6-plus`
+- `qwen3.6-flash`
+- `deepseek-v3.2`
+
+For these models, on the OpenAI-compatible Chat Completions transport, the
+plugin declares Hermes' OpenAI-wire cache-marker layout. The provider returns
+no override for `qwen3.8-max-preview`, models outside this exact allowlist, or
+other API modes. Officially listed Qwen Coder/VL models and dated snapshots
+are not added because they are outside this plugin's canonical Token Plan chat
+catalogue.
+
+This is the documented **explicit cache** mode: Hermes adds
+`{"cache_control": {"type": "ephemeral"}}` markers to the outgoing
+`messages` content. QwenCloud documents a 1024-token minimum, a five-minute
+cache lifetime, and at most four markers per request. The separate **implicit
+cache** mode is automatic and is not declared by this plugin. The separate
+**session cache** mode requires the Responses API, the
+`x-dashscope-session-cache` header, and `previous_response_id`; it is also not
+part of this Chat Completions hook.
+
+This declaration requires a Hermes release that includes the optional
+`ProviderProfile.prompt_cache_policy()` hook. The currently supported Hermes
+releases can still load the plugin, but ignore this unknown method; they do not
+activate explicit markers through this declaration.
+
 ## Thinking behaviour
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:
