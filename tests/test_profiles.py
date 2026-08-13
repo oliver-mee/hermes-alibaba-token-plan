@@ -13,21 +13,23 @@ REPO = Path(__file__).resolve().parent.parent
 GLOBAL_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
 CN_URL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 PERSONAL_MODELS = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-flash-0731",
     "glm-5.2",
 )
 TEAM_MODELS = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
+    "deepseek-v4-flash-0731",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
@@ -40,10 +42,19 @@ TEAM_MODELS = (
 
 
 def load_plugin():
-    path = REPO / "alibaba-token-plan" / "__init__.py"
+    """Load the plugin the way Hermes' loader does: as a package with
+    submodule search locations, so the relative fallback_models import
+    resolves. (hermes_cli/plugins.py sets the same three attributes.)"""
+    plugin_dir = REPO / "alibaba-token-plan"
     name = "_test_token_plan_plugin"
-    spec = importlib.util.spec_from_file_location(name, path)
+    for stale in [n for n in sys.modules if n == name or n.startswith(name + ".")]:
+        del sys.modules[stale]
+    spec = importlib.util.spec_from_file_location(
+        name, plugin_dir / "__init__.py",
+        submodule_search_locations=[str(plugin_dir)])
     mod = importlib.util.module_from_spec(spec)
+    mod.__package__ = name
+    mod.__path__ = [str(plugin_dir)]
     sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
@@ -116,8 +127,9 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "wan2.7-image",
             "glm-5.2",
             "qwen3.7-plus",
-            "qwen3.8-max-preview",
+            "qwen3.8-max",
             "deepseek-v4-pro",
+            "deepseek-v4-flash-0731",
             "qwen3.6-flash",
             "qwen3.7-max",
             "unknown-preview",
@@ -149,7 +161,9 @@ def test_discovery_handles_unknown_only_and_failed_fetch(
 
 def test_hybrid_models_only_receive_explicit_reasoning_toggle(mock_providers_package):
     profile = load_plugin().alibaba_token_plan
-    hybrid = [model for model in TEAM_MODELS if model not in {"qwen3.8-max-preview", "MiniMax-M2.5"}]
+    # qwen3.8-max is hybrid too, but additionally maps reasoning_effort, so it
+    # gets its own test below rather than the generic no-effort expectation.
+    hybrid = [model for model in TEAM_MODELS if model not in {"qwen3.8-max", "MiniMax-M2.5"}]
     for model in hybrid:
         assert profile.build_api_kwargs_extras(model=model, reasoning_config=None) == ({}, {})
         assert profile.build_api_kwargs_extras(
@@ -166,7 +180,10 @@ def test_hybrid_models_only_receive_explicit_reasoning_toggle(mock_providers_pac
         ) == ({"enable_thinking": False}, {})
 
 
-def test_qwen38_effort_mapping_and_always_thinking_guard(mock_providers_package):
+def test_qwen38_effort_mapping_as_hybrid(mock_providers_package):
+    """qwen3.8-max (GA) maps Hermes effort levels onto the gateway's accepted
+    reasoning_effort enum AND, unlike its retired always-thinking preview,
+    honours the hybrid enable_thinking toggle alongside it."""
     profile = load_plugin().alibaba_token_plan
     expected = {
         "minimal": "low",
@@ -178,19 +195,18 @@ def test_qwen38_effort_mapping_and_always_thinking_guard(mock_providers_package)
     }
     for source, target in expected.items():
         body, top_level = profile.build_api_kwargs_extras(
-            model="qwen3.8-max-preview",
-            reasoning_config={"enabled": False, "effort": source},
+            model="qwen3.8-max",
+            reasoning_config={"enabled": True, "effort": source},
         )
-        assert body == {"reasoning_effort": target}
+        assert body == {"reasoning_effort": target, "enable_thinking": True}
         assert top_level == {}
 
-    for config in ({"enabled": False}, {"enabled": False, "effort": "none"}):
-        body, _ = profile.build_api_kwargs_extras(
-            model="qwen3.8-max-preview",
-            reasoning_config=config,
-        )
-        assert "enable_thinking" not in body
-        assert "reasoning_effort" not in body
+    body, _ = profile.build_api_kwargs_extras(
+        model="qwen3.8-max", reasoning_config={"enabled": False})
+    assert body == {"enable_thinking": False}
+    body, _ = profile.build_api_kwargs_extras(
+        model="qwen3.8-max", reasoning_config={"effort": "none"})
+    assert body == {}
 
 
 def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_package):

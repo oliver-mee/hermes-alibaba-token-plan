@@ -2,6 +2,16 @@
 
 ## 1.2.0
 
+- Refresh the catalogue to the 2026-08-13 measured dataset: add `qwen3.8-max`
+  (GA) and `deepseek-v4-flash-0731` to both tiers; drop the retired
+  `qwen3.8-max-preview` (left `/models` 2026-08-06). Personal is now 7 chat
+  models, Team 16.
+- Ship the catalogue as a generated `fallback_models.py` module imported by
+  `__init__.py`, so future updates are a single file copy from the upstream
+  generator instead of hand-edited tuples.
+- Treat `qwen3.8-max` as hybrid: the reasoning-effort mapping moves to the GA
+  id and now composes with the `enable_thinking` toggle; only `MiniMax-M2.5`
+  remains always-thinking.
 - Resolve the Global provider's key from `TOKEN_PLAN_PERSONAL_API_KEY` as well,
   so a key held under that name is found when a model is selected by provider id
   rather than through a `providers.` block in `config.yaml`.

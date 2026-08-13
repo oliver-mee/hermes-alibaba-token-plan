@@ -39,21 +39,23 @@ from providers import get_provider_profile
 from providers.base import ProviderProfile
 
 personal = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-flash-0731",
     "glm-5.2",
 )
 team = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-flash",
+    "deepseek-v4-flash-0731",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
@@ -67,6 +69,7 @@ global_env = (
     "QWEN_TOKEN_PLAN_API_KEY",
     "BAILIAN_TOKEN_PLAN_API_KEY",
     "ALIBABA_TOKEN_PLAN_API_KEY",
+    "TOKEN_PLAN_PERSONAL_API_KEY",
     "ALIBABA_TOKEN_PLAN_BASE_URL",
 )
 cn_env = ("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_BASE_URL")
@@ -98,7 +101,7 @@ assert _infer_provider_from_url(global_url) == "alibaba-token-plan"
 assert _infer_provider_from_url(cn_url) == "alibaba-token-plan-cn"
 
 global_auth = PROVIDER_REGISTRY["alibaba-token-plan"]
-assert global_auth.api_key_env_vars == global_env[:3]
+assert global_auth.api_key_env_vars == global_env[:4]
 assert global_auth.base_url_env_var == global_env[-1]
 cn_auth = PROVIDER_REGISTRY["alibaba-token-plan-cn"]
 assert cn_auth.api_key_env_vars == cn_env[:1]
@@ -107,8 +110,8 @@ assert cn_auth.base_url_env_var == cn_env[-1]
 for name in (*global_env, *cn_env, "DASHSCOPE_API_KEY"):
     os.environ.pop(name, None)
 
-for index, name in enumerate(global_env[:3]):
-    for key_name in global_env[:3]:
+for index, name in enumerate(global_env[:4]):
+    for key_name in global_env[:4]:
         os.environ.pop(key_name, None)
     os.environ[name] = f"synthetic-key-{index}"
     creds = resolve_api_key_provider_credentials("alibaba-token-plan")
@@ -174,7 +177,7 @@ def extra_body(profile, model, config):
     )
     return kwargs.get("extra_body", {})
 
-for model in (model for model in team if model not in {"qwen3.8-max-preview", "MiniMax-M2.5"}):
+for model in (model for model in team if model not in {"qwen3.8-max", "MiniMax-M2.5"}):
     assert extra_body(global_profile, model, None) == {}
     assert extra_body(global_profile, model, {"effort": "high"}) == {}
     assert extra_body(global_profile, model, {"enabled": True}) == {"enable_thinking": True}
@@ -182,19 +185,19 @@ for model in (model for model in team if model not in {"qwen3.8-max-preview", "M
 
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "minimal"},
-) == {"reasoning_effort": "low"}
+    "qwen3.8-max",
+    {"enabled": True, "effort": "minimal"},
+) == {"reasoning_effort": "low", "enable_thinking": True}
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "max"},
-) == {"reasoning_effort": "xhigh"}
+    "qwen3.8-max",
+    {"enabled": True, "effort": "max"},
+) == {"reasoning_effort": "xhigh", "enable_thinking": True}
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     {"enabled": False, "effort": "none"},
-) == {}
+) == {"enable_thinking": False}
 assert extra_body(
     global_profile,
     "MiniMax-M2.5",

@@ -16,37 +16,29 @@ from providers import register_provider
 from providers.base import ProviderProfile
 
 
-# Generated from the public Token Plan Wiki snapshot at v2026.7.25:
-# https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/v2026.7.25/data/models.json
-# Keep this order: it is the canonical catalogue order used by the picker.
-PERSONAL_MODELS = (
-    "qwen3.8-max-preview",
-    "qwen3.7-max",
-    "qwen3.7-plus",
-    "qwen3.6-flash",
-    "deepseek-v4-pro",
-    "glm-5.2",
-)
+# The catalogue ships as fallback_models.py, GENERATED from the Token Plan
+# reference dataset (tools/generate.py in the knowledge-base project; public
+# mirror: https://github.com/oliver-mee/alibaba-token-plan-wiki data/models.json).
+# To update: regenerate upstream, then `cp build/hermes/fallback_models.py` over
+# the sibling file — never hand-edit the tuples. Tuple order is the canonical
+# catalogue order used by the picker.
+#
+# The relative import is how Hermes' plugin loader executes this package; the
+# path fallback keeps the module importable when a test or tool loads
+# __init__.py directly as a lone file.
+try:
+    from .fallback_models import PERSONAL_MODELS, TEAM_MODELS
+except ImportError:  # loaded without package context
+    import importlib.util as _ilu
+    from pathlib import Path as _Path
 
-TEAM_MODELS = (
-    "qwen3.8-max-preview",
-    "qwen3.7-max",
-    "qwen3.7-plus",
-    "qwen3.6-plus",
-    "qwen3.6-flash",
-    "deepseek-v4-pro",
-    "deepseek-v4-flash",
-    "deepseek-v3.2",
-    "kimi-k2.7-code",
-    "kimi-k2.6",
-    "kimi-k2.5",
-    "glm-5.2",
-    "glm-5.1",
-    "glm-5",
-    "MiniMax-M2.5",
-)
+    _spec = _ilu.spec_from_file_location(
+        "_token_plan_fallback_models", _Path(__file__).with_name("fallback_models.py"))
+    _fm = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_fm)
+    PERSONAL_MODELS, TEAM_MODELS = _fm.PERSONAL_MODELS, _fm.TEAM_MODELS
 
-_ALWAYS_THINKING_MODELS = {"qwen3.8-max-preview", "minimax-m2.5"}
+_ALWAYS_THINKING_MODELS = {"minimax-m2.5"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
 
 
@@ -88,7 +80,10 @@ class QwenTokenPlanProfile(ProviderProfile):
         config = reasoning_config if isinstance(reasoning_config, dict) else {}
         body: dict[str, Any] = {}
 
-        if model_name == "qwen3.8-max-preview":
+        # qwen3.8-max (GA) accepts reasoning_effort low/medium/high/xhigh
+        # (gateway acceptance enumerated 2026-08-05). Its retired preview id
+        # carried the same contract while it lived.
+        if model_name == "qwen3.8-max":
             effort = str(config.get("effort") or "").strip().lower()
             mapped_effort = {
                 "minimal": "low",

@@ -80,40 +80,46 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 
 ## Personal and Team discovery
 
-Authenticated `/models` discovery remains enabled. The gateway response is intersected with the measured 15-model Team chat allowlist. This excludes image, video, unknown, and not-yet-verified IDs while retaining the canonical catalogue order.
+Authenticated `/models` discovery remains enabled. The gateway response is intersected with the measured 16-model Team chat allowlist. This excludes image, video, audio, unknown, and not-yet-verified IDs while retaining the canonical catalogue order.
 
-- Personal keys currently resolve to six chat models.
-- Team keys currently resolve to fifteen chat models.
-- If discovery fails or no key is configured, both providers use the Personal six as the conservative offline fallback.
+- Personal keys currently resolve to seven chat models.
+- Team keys currently resolve to sixteen chat models.
+- If discovery fails or no key is configured, the Global and China providers use the Personal seven as the conservative offline fallback; the Team provider falls back to the Team catalogue.
+
+The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
+(from the Token Plan wiki's measured dataset). Update it by regenerating
+upstream and copying the file over — never by hand-editing the tuples.
 
 `supports_health_check` is deliberately disabled. A lapsed Token Plan key can still receive HTTP 200 and a full-looking `/models` response while every inference request is denied. Discovery is useful for the picker, but it is not proof that the subscription can call a model.
 
 ### Personal chat catalogue and offline fallback
 
-1. `qwen3.8-max-preview`
+1. `qwen3.8-max`
 2. `qwen3.7-max`
 3. `qwen3.7-plus`
 4. `qwen3.6-flash`
 5. `deepseek-v4-pro`
-6. `glm-5.2`
+6. `deepseek-v4-flash-0731`
+7. `glm-5.2`
 
 ### Team chat catalogue
 
-1. `qwen3.8-max-preview`
+1. `qwen3.8-max`
 2. `qwen3.7-max`
 3. `qwen3.7-plus`
 4. `qwen3.6-plus`
 5. `qwen3.6-flash`
 6. `deepseek-v4-pro`
 7. `deepseek-v4-flash`
-8. `deepseek-v3.2`
-9. `kimi-k2.7-code`
-10. `kimi-k2.6`
-11. `kimi-k2.5`
-12. `glm-5.2`
-13. `glm-5.1`
-14. `glm-5`
-15. `MiniMax-M2.5`
+8. `deepseek-v4-flash-0731`
+9. `deepseek-v3.2`
+10. `kimi-k2.7-code`
+11. `kimi-k2.6`
+12. `kimi-k2.5`
+13. `glm-5.2`
+14. `glm-5.1`
+15. `glm-5`
+16. `MiniMax-M2.5`
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
@@ -121,14 +127,14 @@ Authenticated `/models` discovery remains enabled. The gateway response is inter
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:
 
-- The thirteen hybrid models receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
-- `qwen3.8-max-preview` and `MiniMax-M2.5` are always-thinking models. The plugin never sends `enable_thinking: false` to either.
-- Qwen3.8 effort maps as follows: `minimal` and `low` to `low`, `medium` to `medium`, and `high` or `max` to `xhigh`. `none` is ignored because Qwen3.8 cannot disable thinking.
+- The fifteen hybrid models receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
+- `MiniMax-M2.5` is always-thinking. The plugin never sends `enable_thinking: false` to it. (Its former companion `qwen3.8-max-preview` retired 2026-08-06; its GA successor `qwen3.8-max` is hybrid and can disable thinking.)
+- `qwen3.8-max` effort maps as follows: `minimal` and `low` to `low`, `medium` to `medium`, and `high`, `xhigh` or `max` to `xhigh`.
 - Unknown models receive no provider-specific thinking fields.
 
 The plugin does not force a provider-wide vision flag. Hermes reads per-model metadata from models.dev. Seven current chat models accept image and video input:
 
-- `qwen3.8-max-preview`
+- `qwen3.8-max`
 - `qwen3.7-plus`
 - `qwen3.6-plus`
 - `qwen3.6-flash`
@@ -184,7 +190,7 @@ A separate weekly advisory workflow tests current Hermes `main`.
 
 Add per-model Responses API routing for the five Qwen models that support it:
 
-- `qwen3.8-max-preview`
+- `qwen3.8-max`
 - `qwen3.7-max`
 - `qwen3.7-plus`
 - `qwen3.6-plus`
