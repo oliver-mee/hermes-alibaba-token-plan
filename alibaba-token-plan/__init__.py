@@ -131,6 +131,11 @@ alibaba_token_plan = QwenTokenPlanProfile(
         "QWEN_TOKEN_PLAN_API_KEY",
         "BAILIAN_TOKEN_PLAN_API_KEY",
         "ALIBABA_TOKEN_PLAN_API_KEY",
+        # Credential resolution for a registered provider reads ONLY this tuple
+        # (hermes_cli/auth.py::_resolve_api_key_provider_secret). It never falls
+        # back to providers.<name>.api_key in config.yaml, so a key named only
+        # there goes missing the moment a model is picked by provider id.
+        "TOKEN_PLAN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
@@ -154,5 +159,33 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     fallback_models=PERSONAL_MODELS,
 )
 
+# Team is a separate registered provider rather than a key swap on the Global
+# profile: the two tiers have different catalogues, the sk-sp- key prefix is
+# identical so the tier cannot be detected at runtime, and one host may serve
+# several Hermes profiles at once. Selecting the provider selects the account.
+alibaba_token_plan_team = QwenTokenPlanProfile(
+    name="alibaba-token-plan-team",
+    aliases=(
+        "alibaba_token_plan_team",
+        "aliyun-token-plan-team",
+        "token-plan-team",
+        "qwen-token-plan-team",
+    ),
+    display_name="Qwen Cloud Token Plan (Team, Global)",
+    description="Qwen Cloud Token Plan Team, Global/Singapore",
+    signup_url="https://www.qwencloud.com/pricing/token-plan",
+    env_vars=(
+        "TOKEN_PLAN_TEAM_API_KEY",
+        "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
+        "ALIBABA_TOKEN_PLAN_BASE_URL",
+    ),
+    base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    auth_type="api_key",
+    supports_health_check=False,
+    default_aux_model="qwen3.6-flash",
+    fallback_models=TEAM_MODELS,
+)
+
 register_provider(alibaba_token_plan)
+register_provider(alibaba_token_plan_team)
 register_provider(alibaba_token_plan_cn)

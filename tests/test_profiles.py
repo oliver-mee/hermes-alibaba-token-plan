@@ -53,6 +53,7 @@ def test_both_regions_register_from_one_plugin(mock_providers_package):
     mod = load_plugin()
     assert tuple(mock_providers_package) == (
         "alibaba-token-plan",
+        "alibaba-token-plan-team",
         "alibaba-token-plan-cn",
     )
     global_profile = mock_providers_package["alibaba-token-plan"]
@@ -76,10 +77,26 @@ def test_global_credentials_keep_precedence_and_isolate_dashscope(mock_providers
         "QWEN_TOKEN_PLAN_API_KEY",
         "BAILIAN_TOKEN_PLAN_API_KEY",
         "ALIBABA_TOKEN_PLAN_API_KEY",
+        "TOKEN_PLAN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     )
     assert "DASHSCOPE_API_KEY" not in profile.env_vars
     assert profile.base_url != "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+
+
+def test_team_is_a_separate_provider_with_its_own_key(mock_providers_package):
+    load_plugin()
+    personal = mock_providers_package["alibaba-token-plan"]
+    team = mock_providers_package["alibaba-token-plan-team"]
+
+    # Same gateway, different account: the key names must not overlap, or one
+    # profile silently bills the other's plan.
+    assert team.base_url == personal.base_url == GLOBAL_URL
+    assert team.env_vars[0] == "TOKEN_PLAN_TEAM_API_KEY"
+    key_names = {v for v in team.env_vars if v.endswith("_API_KEY")}
+    assert key_names.isdisjoint(v for v in personal.env_vars if v.endswith("_API_KEY"))
+    assert set(team.aliases).isdisjoint(personal.aliases)
+    assert team.fallback_models != personal.fallback_models
 
 
 def _set_live(monkeypatch, models):
@@ -192,7 +209,7 @@ def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_pack
     ) == ({}, {})
 
 
-def test_single_manifest_is_version_1_1_1():
+def test_single_manifest_is_version_1_2_0():
     manifests = list(REPO.glob("alibaba-token-plan*/plugin.yaml"))
     assert manifests == [REPO / "alibaba-token-plan" / "plugin.yaml"]
     fields = dict(
@@ -201,4 +218,4 @@ def test_single_manifest_is_version_1_1_1():
         if ":" in line
     )
     assert fields["kind"].strip() == "model-provider"
-    assert fields["version"].strip() == "1.1.1"
+    assert fields["version"].strip() == "1.2.0"

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0
+
+- Resolve the Global provider's key from `TOKEN_PLAN_PERSONAL_API_KEY` as well,
+  so a key held under that name is found when a model is selected by provider id
+  rather than through a `providers.` block in `config.yaml`.
+- Register a separate Team provider (`alibaba-token-plan-team`) reading
+  `TOKEN_PLAN_TEAM_API_KEY`, with the Team catalogue as its offline fallback.
+  Tier cannot be detected from the key, so the provider id is what selects the
+  account.
+
 ## 1.1.1
 
 - Make the installer portable across Linux and macOS and normalise relative
