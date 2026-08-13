@@ -12,13 +12,18 @@
 - Treat `qwen3.8-max` as hybrid: the reasoning-effort mapping moves to the GA
   id and now composes with the `enable_thinking` toggle; only `MiniMax-M2.5`
   remains always-thinking.
-- Resolve the Global provider's key from `TOKEN_PLAN_PERSONAL_API_KEY` as well,
-  so a key held under that name is found when a model is selected by provider id
-  rather than through a `providers.` block in `config.yaml`.
-- Register a separate Team provider (`alibaba-token-plan-team`) reading
-  `TOKEN_PLAN_TEAM_API_KEY`, with the Team catalogue as its offline fallback.
-  Tier cannot be detected from the key, so the provider id is what selects the
-  account.
+- Register one provider per region and tier: `alibaba-token-plan` (Global
+  Personal), `alibaba-token-plan-team`, `alibaba-token-plan-cn` (China
+  Personal), and `alibaba-token-plan-cn-team`, each reading one canonical key
+  variable: `ALIBABA_TOKEN_PLAN_{PERSONAL,TEAM,CN_PERSONAL,CN_TEAM}_API_KEY`.
+  The tiers have different catalogues and the `sk-sp-` key prefix is identical,
+  so the provider id is what selects the account. Registered providers resolve
+  credentials only from their `env_vars` tuple (a `providers.` block in
+  `config.yaml` is never consulted), which is why every key needs a first-class
+  variable name. Legacy names (`QWEN_TOKEN_PLAN_API_KEY`,
+  `BAILIAN_TOKEN_PLAN_API_KEY`, `ALIBABA_TOKEN_PLAN_API_KEY`,
+  `ALIBABA_TOKEN_PLAN_CN_API_KEY`) remain accepted, first, on the Personal
+  providers.
 
 ## 1.1.1
 

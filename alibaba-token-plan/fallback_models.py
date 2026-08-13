@@ -1,4 +1,6 @@
-# Generated from reference/models.json by tools/generate.py. Do not hand-edit.
+# GENERATED file - do not hand-edit. Source: the measured Token Plan catalogue
+# (public copy: https://github.com/oliver-mee/alibaba-token-plan-wiki, data/models.json).
+# Regenerate upstream and copy this file over to update.
 #
 # Personal and Team have DIFFERENT catalogues and the sk-sp- key prefix is identical
 # for both, so the tier cannot be detected from the key.
@@ -10,7 +12,7 @@
 # safer default there, since nobody is offered something unusable.
 #
 # Always handle 'Access to model denied' at call time regardless: a LAPSED subscription
-# lists all 22 and then denies everything. See reference/models.json meta.entitlement.
+# still lists its full catalogue on /models and then denies every completion.
 
 # PERSONAL: 7 chat models
 PERSONAL_MODELS = (

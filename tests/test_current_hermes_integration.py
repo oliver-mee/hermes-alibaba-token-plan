@@ -69,10 +69,14 @@ global_env = (
     "QWEN_TOKEN_PLAN_API_KEY",
     "BAILIAN_TOKEN_PLAN_API_KEY",
     "ALIBABA_TOKEN_PLAN_API_KEY",
-    "TOKEN_PLAN_PERSONAL_API_KEY",
+    "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
     "ALIBABA_TOKEN_PLAN_BASE_URL",
 )
-cn_env = ("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_BASE_URL")
+cn_env = (
+    "ALIBABA_TOKEN_PLAN_CN_API_KEY",
+    "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
+    "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
+)
 global_url = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
 cn_url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 
@@ -104,7 +108,7 @@ global_auth = PROVIDER_REGISTRY["alibaba-token-plan"]
 assert global_auth.api_key_env_vars == global_env[:4]
 assert global_auth.base_url_env_var == global_env[-1]
 cn_auth = PROVIDER_REGISTRY["alibaba-token-plan-cn"]
-assert cn_auth.api_key_env_vars == cn_env[:1]
+assert cn_auth.api_key_env_vars == cn_env[:2]
 assert cn_auth.base_url_env_var == cn_env[-1]
 
 for name in (*global_env, *cn_env, "DASHSCOPE_API_KEY"):

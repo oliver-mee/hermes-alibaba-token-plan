@@ -66,6 +66,7 @@ def test_both_regions_register_from_one_plugin(mock_providers_package):
         "alibaba-token-plan",
         "alibaba-token-plan-team",
         "alibaba-token-plan-cn",
+        "alibaba-token-plan-cn-team",
     )
     global_profile = mock_providers_package["alibaba-token-plan"]
     cn_profile = mock_providers_package["alibaba-token-plan-cn"]
@@ -88,7 +89,7 @@ def test_global_credentials_keep_precedence_and_isolate_dashscope(mock_providers
         "QWEN_TOKEN_PLAN_API_KEY",
         "BAILIAN_TOKEN_PLAN_API_KEY",
         "ALIBABA_TOKEN_PLAN_API_KEY",
-        "TOKEN_PLAN_PERSONAL_API_KEY",
+        "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     )
     assert "DASHSCOPE_API_KEY" not in profile.env_vars
@@ -103,11 +104,41 @@ def test_team_is_a_separate_provider_with_its_own_key(mock_providers_package):
     # Same gateway, different account: the key names must not overlap, or one
     # profile silently bills the other's plan.
     assert team.base_url == personal.base_url == GLOBAL_URL
-    assert team.env_vars[0] == "TOKEN_PLAN_TEAM_API_KEY"
+    assert team.env_vars[0] == "ALIBABA_TOKEN_PLAN_TEAM_API_KEY"
     key_names = {v for v in team.env_vars if v.endswith("_API_KEY")}
     assert key_names.isdisjoint(v for v in personal.env_vars if v.endswith("_API_KEY"))
     assert set(team.aliases).isdisjoint(personal.aliases)
     assert team.fallback_models != personal.fallback_models
+
+
+def test_cn_team_mirrors_the_global_split(mock_providers_package):
+    load_plugin()
+    cn = mock_providers_package["alibaba-token-plan-cn"]
+    cn_team = mock_providers_package["alibaba-token-plan-cn-team"]
+
+    assert cn_team.base_url == cn.base_url == CN_URL
+    assert cn_team.env_vars[0] == "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY"
+    key_names = {v for v in cn_team.env_vars if v.endswith("_API_KEY")}
+    assert key_names.isdisjoint(v for v in cn.env_vars if v.endswith("_API_KEY"))
+    assert set(cn_team.aliases).isdisjoint(cn.aliases)
+    assert cn_team.fallback_models != cn.fallback_models
+
+
+def test_one_canonical_key_name_per_region_and_tier(mock_providers_package):
+    """The public contract: ALIBABA_TOKEN_PLAN_{PERSONAL,TEAM,CN_PERSONAL,
+    CN_TEAM}_API_KEY, one per provider, no private/unprefixed names."""
+    load_plugin()
+    canonical = {
+        "alibaba-token-plan": "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
+        "alibaba-token-plan-team": "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
+        "alibaba-token-plan-cn": "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
+        "alibaba-token-plan-cn-team": "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
+    }
+    for name, var in canonical.items():
+        profile = mock_providers_package[name]
+        assert var in profile.env_vars, (name, var)
+        for env in profile.env_vars:
+            assert env.startswith(("ALIBABA_", "QWEN_", "BAILIAN_")), (name, env)
 
 
 def _set_live(monkeypatch, models):

@@ -6,14 +6,22 @@
 
 Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Cloud and Qwen Cloud Token Plan.
 
-One installed plugin registers two backward-compatible providers:
+One installed plugin registers four providers, one per region and tier, because the two
+tiers have different catalogues and the `sk-sp-` key prefix is identical for both, so the
+provider you select is what selects the account:
 
-| Provider | Region | Endpoint |
-|---|---|---|
-| `alibaba-token-plan` | Global, Singapore | `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1` |
-| `alibaba-token-plan-cn` | China, Beijing | `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1` |
+| Provider | Region | Tier | Key variable |
+|---|---|---|---|
+| `alibaba-token-plan` | Global, Singapore | Personal | `ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY` |
+| `alibaba-token-plan-team` | Global, Singapore | Team | `ALIBABA_TOKEN_PLAN_TEAM_API_KEY` |
+| `alibaba-token-plan-cn` | China, Beijing | Personal | `ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY` |
+| `alibaba-token-plan-cn-team` | China, Beijing | Team | `ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY` |
 
-The regions use separate accounts, credentials, consoles, and endpoints. They currently expose the same measured chat catalogue. Both use Hermes' OpenAI-compatible Chat Completions transport.
+Global endpoint: `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`.
+China endpoint: `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`.
+The regions use separate accounts, credentials, consoles, and endpoints. They currently
+expose the same measured chat catalogue. All four use Hermes' OpenAI-compatible Chat
+Completions transport.
 
 ## Requirements
 
@@ -44,7 +52,7 @@ The installer copies `alibaba-token-plan/` to:
 ${HERMES_HOME:-~/.hermes}/plugins/model-providers/
 ```
 
-That directory registers both providers. During upgrade, the installer backs up and removes the legacy standalone `alibaba-token-plan-cn/` directory so it cannot register a second China profile and override this one.
+That directory registers all four providers. During upgrade, the installer backs up and removes the legacy standalone `alibaba-token-plan-cn/` directory so it cannot register a second China profile and override this one.
 
 Installed files and previous versions are preserved under `plugins/model-providers/.backups/`.
 
@@ -60,20 +68,28 @@ The installer rejects symlinked plugin and backup destinations.
 
 Token Plan, DashScope pay-as-you-go, and Alibaba Coding Plan use different credentials and billing lanes. This plugin never reads `DASHSCOPE_API_KEY`.
 
-Global credentials are checked in this order:
+One canonical variable per region and tier:
 
 ```bash
-QWEN_TOKEN_PLAN_API_KEY=YOUR_TOKEN_PLAN_KEY
-# BAILIAN_TOKEN_PLAN_API_KEY=YOUR_TOKEN_PLAN_KEY
-# ALIBABA_TOKEN_PLAN_API_KEY=YOUR_TOKEN_PLAN_KEY
-# ALIBABA_TOKEN_PLAN_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY=YOUR_GLOBAL_PERSONAL_KEY
+ALIBABA_TOKEN_PLAN_TEAM_API_KEY=YOUR_GLOBAL_TEAM_KEY
+ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY=YOUR_CHINA_PERSONAL_KEY
+ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY=YOUR_CHINA_TEAM_KEY
 ```
 
-China uses its existing namespace:
+Set only the ones you hold. Each provider reads exactly its own variable, so one
+subscription's key can never silently bill another's.
+
+Backward-compatible names remain accepted and are checked FIRST on the Personal
+providers, so existing installs resolve exactly the key they resolved before:
 
 ```bash
-ALIBABA_TOKEN_PLAN_CN_API_KEY=YOUR_CHINA_TOKEN_PLAN_KEY
-# ALIBABA_TOKEN_PLAN_CN_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+# Global (checked before ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY, in this order)
+# QWEN_TOKEN_PLAN_API_KEY / BAILIAN_TOKEN_PLAN_API_KEY / ALIBABA_TOKEN_PLAN_API_KEY
+# China (checked before ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY)
+# ALIBABA_TOKEN_PLAN_CN_API_KEY
+# Base URL overrides:
+# ALIBABA_TOKEN_PLAN_BASE_URL / ALIBABA_TOKEN_PLAN_CN_BASE_URL
 ```
 
 Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan keys use the `sk-sp-` prefix, but Personal and Team keys share that prefix, so the edition cannot be inferred from the key.
@@ -84,11 +100,11 @@ Authenticated `/models` discovery remains enabled. The gateway response is inter
 
 - Personal keys currently resolve to seven chat models.
 - Team keys currently resolve to sixteen chat models.
-- If discovery fails or no key is configured, the Global and China providers use the Personal seven as the conservative offline fallback; the Team provider falls back to the Team catalogue.
+- If discovery fails or no key is configured, the Personal providers use the Personal seven as the conservative offline fallback; the Team providers fall back to the Team catalogue.
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
 (from the Token Plan wiki's measured dataset). Update it by regenerating
-upstream and copying the file over — never by hand-editing the tuples.
+upstream and copying the file over, never by hand-editing the tuples.
 
 `supports_health_check` is deliberately disabled. A lapsed Token Plan key can still receive HTTP 200 and a full-looking `/models` response while every inference request is denied. Discovery is useful for the picker, but it is not proof that the subscription can call a model.
 
@@ -148,14 +164,18 @@ The other eight chat models are text-only. Image and video generation IDs are in
 
 ```bash
 hermes model
-hermes chat --provider alibaba-token-plan --model qwen3.7-plus
-hermes chat --provider alibaba-token-plan-cn --model qwen3.7-plus
+hermes chat --provider alibaba-token-plan --model qwen3.7-plus          # Global, Personal
+hermes chat --provider alibaba-token-plan-team --model qwen3.6-plus     # Global, Team
+hermes chat --provider alibaba-token-plan-cn --model qwen3.7-plus       # China, Personal
+hermes chat --provider alibaba-token-plan-cn-team --model qwen3.6-plus  # China, Team
 ```
 
 Aliases remain available:
 
-- Global: `alibaba_token_plan`, `aliyun-token-plan`, `token-plan`, `qwen-token-plan`, `qwencloud-token-plan`, `bailian-token-plan`
-- China: `alibaba_token_plan_cn`, `aliyun-token-plan-cn`, `token-plan-cn`
+- Global Personal: `alibaba_token_plan`, `aliyun-token-plan`, `token-plan`, `qwen-token-plan`, `qwencloud-token-plan`, `bailian-token-plan`
+- Global Team: `alibaba_token_plan_team`, `aliyun-token-plan-team`, `token-plan-team`, `qwen-token-plan-team`
+- China Personal: `alibaba_token_plan_cn`, `aliyun-token-plan-cn`, `token-plan-cn`
+- China Team: `alibaba_token_plan_cn_team`, `aliyun-token-plan-cn-team`, `token-plan-cn-team`
 
 Token Plan is restricted to interactive use with compatible programming and agent tools. Do not use it as an unattended application backend, batch processor, load test, or shared key pool.
 

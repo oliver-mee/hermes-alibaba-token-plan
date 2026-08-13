@@ -20,7 +20,7 @@ from providers.base import ProviderProfile
 # reference dataset (tools/generate.py in the knowledge-base project; public
 # mirror: https://github.com/oliver-mee/alibaba-token-plan-wiki data/models.json).
 # To update: regenerate upstream, then `cp build/hermes/fallback_models.py` over
-# the sibling file — never hand-edit the tuples. Tuple order is the canonical
+# the sibling file. Never hand-edit the tuples. Tuple order is the canonical
 # catalogue order used by the picker.
 #
 # The relative import is how Hermes' plugin loader executes this package; the
@@ -123,14 +123,19 @@ alibaba_token_plan = QwenTokenPlanProfile(
     description="Qwen Cloud Token Plan Personal and Team, Global/Singapore",
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
-        "QWEN_TOKEN_PLAN_API_KEY",
-        "BAILIAN_TOKEN_PLAN_API_KEY",
-        "ALIBABA_TOKEN_PLAN_API_KEY",
         # Credential resolution for a registered provider reads ONLY this tuple
         # (hermes_cli/auth.py::_resolve_api_key_provider_secret). It never falls
         # back to providers.<name>.api_key in config.yaml, so a key named only
         # there goes missing the moment a model is picked by provider id.
-        "TOKEN_PLAN_PERSONAL_API_KEY",
+        #
+        # One canonical name per region/tier across the four providers:
+        # ALIBABA_TOKEN_PLAN_{PERSONAL,TEAM,CN_PERSONAL,CN_TEAM}_API_KEY.
+        # The legacy tier-agnostic names stay accepted, first, so existing
+        # installs resolve exactly the key they resolved before this scheme.
+        "QWEN_TOKEN_PLAN_API_KEY",
+        "BAILIAN_TOKEN_PLAN_API_KEY",
+        "ALIBABA_TOKEN_PLAN_API_KEY",
+        "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
@@ -144,9 +149,13 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     name="alibaba-token-plan-cn",
     aliases=("alibaba_token_plan_cn", "aliyun-token-plan-cn", "token-plan-cn"),
     display_name="Alibaba Cloud Token Plan (China)",
-    description="Alibaba Cloud Token Plan Personal and Team, China/Beijing",
+    description="Alibaba Cloud Token Plan Personal, China/Beijing",
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
-    env_vars=("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_BASE_URL"),
+    env_vars=(
+        "ALIBABA_TOKEN_PLAN_CN_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
+    ),
     base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
     supports_health_check=False,
@@ -154,10 +163,11 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     fallback_models=PERSONAL_MODELS,
 )
 
-# Team is a separate registered provider rather than a key swap on the Global
-# profile: the two tiers have different catalogues, the sk-sp- key prefix is
-# identical so the tier cannot be detected at runtime, and one host may serve
-# several Hermes profiles at once. Selecting the provider selects the account.
+# Team is a separate registered provider per region rather than a key swap on
+# the Personal profile: the two tiers have different catalogues, the sk-sp-
+# key prefix is identical so the tier cannot be detected at runtime, and one
+# host may serve several Hermes profiles at once. Selecting the provider
+# selects the account.
 alibaba_token_plan_team = QwenTokenPlanProfile(
     name="alibaba-token-plan-team",
     aliases=(
@@ -170,7 +180,6 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     description="Qwen Cloud Token Plan Team, Global/Singapore",
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
-        "TOKEN_PLAN_TEAM_API_KEY",
         "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
@@ -181,6 +190,28 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     fallback_models=TEAM_MODELS,
 )
 
+alibaba_token_plan_cn_team = QwenTokenPlanProfile(
+    name="alibaba-token-plan-cn-team",
+    aliases=(
+        "alibaba_token_plan_cn_team",
+        "aliyun-token-plan-cn-team",
+        "token-plan-cn-team",
+    ),
+    display_name="Alibaba Cloud Token Plan (Team, China)",
+    description="Alibaba Cloud Token Plan Team, China/Beijing",
+    signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
+    env_vars=(
+        "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
+    ),
+    base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    auth_type="api_key",
+    supports_health_check=False,
+    default_aux_model="qwen3.6-flash",
+    fallback_models=TEAM_MODELS,
+)
+
 register_provider(alibaba_token_plan)
 register_provider(alibaba_token_plan_team)
 register_provider(alibaba_token_plan_cn)
+register_provider(alibaba_token_plan_cn_team)
