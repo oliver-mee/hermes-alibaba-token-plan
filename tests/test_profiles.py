@@ -256,13 +256,65 @@ def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_pack
     ) == ({}, {})
 
 
-def test_single_manifest_is_version_1_2_1():
+def _read_manifest():
+    """Return (scalars, tags) from the single plugin manifest.
+
+    Parsed by hand rather than with PyYAML so the standalone suite keeps its
+    zero-dependency property. Only the two shapes the manifest actually uses
+    are handled: top-level ``key: value`` scalars and one ``tags:`` block of
+    ``  - value`` entries. Comments and blank lines are skipped.
+    """
     manifests = list(REPO.glob("alibaba-token-plan*/plugin.yaml"))
     assert manifests == [REPO / "alibaba-token-plan" / "plugin.yaml"]
-    fields = dict(
-        line.split(":", 1)
-        for line in manifests[0].read_text().strip().splitlines()
-        if ":" in line
-    )
-    assert fields["kind"].strip() == "model-provider"
-    assert fields["version"].strip() == "1.2.1"
+
+    scalars: dict[str, str] = {}
+    tags: list[str] = []
+    in_tags = False
+    for line in manifests[0].read_text().splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        if in_tags and line.startswith("  - "):
+            tags.append(line[4:].strip())
+            continue
+        in_tags = False
+        if not line.startswith(" ") and ":" in line:
+            key, _, value = line.partition(":")
+            if key == "tags":
+                in_tags = True
+                continue
+            scalars[key.strip()] = value.strip()
+    return scalars, tags
+
+
+def test_single_manifest_is_version_1_2_2():
+    scalars, _ = _read_manifest()
+    assert scalars["kind"] == "model-provider"
+    assert scalars["version"] == "1.2.2"
+
+
+def test_manifest_declares_v2_metadata():
+    """Manifest v2 fields are optional upstream, so assert them explicitly.
+
+    A silent drop would cost nothing at load time and everything at discovery
+    time: ``hermes plugins search`` matches on ``tags``.
+    """
+    scalars, tags = _read_manifest()
+    assert scalars["manifest_version"] == "2"
+    assert scalars["api_version"] == "1"
+    assert scalars["license"] == "MIT"
+    assert scalars["homepage"].startswith("https://github.com/")
+    assert "model-provider" in tags
+    assert {"alibaba", "qwen", "token-plan"} <= set(tags)
+
+
+def test_manifest_declares_no_inapplicable_v2_fields():
+    """Capabilities and config schema do not apply to a provider profile.
+
+    Every id in Hermes' capability registry gates a tool, LLM or gateway
+    override; registering a ProviderProfile is not a gated surface. The plugin
+    also reads no plugin settings and imports nothing outside the standard
+    library, so these stay absent rather than empty.
+    """
+    scalars, _ = _read_manifest()
+    for field in ("capabilities", "config_schema", "python_dependencies", "requires_plugins"):
+        assert field not in scalars

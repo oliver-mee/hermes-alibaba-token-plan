@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.2
+
+- Adopt the manifest v2 fields Hermes 0.20.1 added (`manifest_version`,
+  `api_version`, `license`, `homepage`, `tags`). All optional and additive, so
+  an older Hermes reads the manifest as v1 and ignores them.
+- `tags` is the reason to bother: `hermes plugins search` scores queries
+  against it. The list covers the vendor and product names, both regions, and
+  the model families the plan serves (DeepSeek, GLM, Kimi, MiniMax), since
+  someone looking for those has no reason to search "alibaba".
+- Deliberately not declared: `capabilities` (every id in Hermes' registry gates
+  a tool, LLM or gateway override, none of which a provider profile touches),
+  `config_schema` (no plugin settings are read), `python_dependencies` (nothing
+  outside the standard library is imported), `requires_plugins`.
+- Tests now assert the v2 metadata and the deliberate omissions, rather than
+  only the version string.
+
 ## 1.2.1
 
 - Shorten the four provider display names so the model picker stops truncating

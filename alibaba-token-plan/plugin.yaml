@@ -1,5 +1,57 @@
 name: alibaba-token-plan-provider
 kind: model-provider
-version: 1.2.1
+version: 1.2.2
 description: Alibaba Token Plan providers for Global and China
 author: Oliver Mee
+
+# Manifest v2 (Hermes 0.20.1+, SUPPORTED_MANIFEST_VERSION = 2). Every field
+# below is optional and additive: an older Hermes parses v1 and ignores the
+# rest, so this stays loadable on any release that ever loaded the plugin.
+#
+# tags is the load-bearing one. `hermes plugins search` scores one term at a
+# time and takes the MAX of its rules, so extra tags widen the set of queries
+# that find the plugin but never stack into a higher rank. There is no cap in
+# the runtime.
+#
+# Name and description are already matched (substring on the name outranks an
+# exact tag hit), so a tag is only worth carrying if it is a word someone would
+# type that does NOT appear in either. That is why the model families served by
+# the plan are listed: a person hunting for a way to run DeepSeek or GLM has no
+# reason to search "alibaba".
+#
+# Deliberately omitted:
+#   python_dependencies — the plugin imports only the standard library and
+#     Hermes' own providers package, so there is nothing to declare.
+#   config_schema — no settings are read from plugins.entries.<id>.settings;
+#     credentials come from the env vars named in each ProviderProfile.
+#   requires_plugins — no plugin dependencies.
+#   capabilities — every id in Hermes' capability registry is a tool, LLM or
+#     gateway override. Registering a ProviderProfile is not a gated surface,
+#     so declaring one would be noise the runtime warns about.
+manifest_version: 2
+api_version: 1
+license: MIT
+homepage: https://github.com/oliver-mee/hermes-alibaba-token-plan
+tags:
+  # What it is
+  - model-provider
+  - subscription
+  - openai-compatible
+  # Vendor and product names, including the ones absent from the plugin name
+  - alibaba
+  - alibaba-cloud
+  - aliyun
+  - qwen
+  - qwen-cloud
+  - token-plan
+  - dashscope
+  - bailian
+  # Regions, which are the whole reason there are four providers
+  - china
+  - singapore
+  # Model families the plan actually serves
+  - qwen3
+  - deepseek
+  - glm
+  - kimi
+  - minimax
