@@ -80,6 +80,12 @@ ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY=YOUR_CHINA_TEAM_KEY
 Set only the ones you hold. Each provider reads exactly its own variable, so one
 subscription's key can never silently bill another's.
 
+The Team providers also read `ALIBABA_TOKEN_PLAN_TEAM_BACKUP_API_KEY` and
+`ALIBABA_TOKEN_PLAN_CN_TEAM_BACKUP_API_KEY` as manual-failover slots for a
+second Team seat's key. Resolution is first-set-wins, not quota-aware: the
+backup is used only when the primary variable is unset, so switching seats
+means unsetting the primary (or swapping the values).
+
 Backward-compatible names remain accepted and are checked FIRST on the Personal
 providers, so existing installs resolve exactly the key they resolved before:
 

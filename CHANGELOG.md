@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Team providers read a manual-failover backup slot
+  (`ALIBABA_TOKEN_PLAN_TEAM_BACKUP_API_KEY`, CN variant likewise) for a second
+  Team seat's key. First-set-wins, used only when the primary is unset.
+
 ## 1.2.0
 
 - Refresh the catalogue to the 2026-08-13 measured dataset: add `qwen3.8-max`

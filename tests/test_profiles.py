@@ -134,6 +134,14 @@ def test_one_canonical_key_name_per_region_and_tier(mock_providers_package):
         "alibaba-token-plan-cn": "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
         "alibaba-token-plan-cn-team": "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
     }
+    backups = {
+        "alibaba-token-plan-team": "ALIBABA_TOKEN_PLAN_TEAM_BACKUP_API_KEY",
+        "alibaba-token-plan-cn-team": "ALIBABA_TOKEN_PLAN_CN_TEAM_BACKUP_API_KEY",
+    }
+    for name, var in backups.items():
+        profile = mock_providers_package[name]
+        # backup must come AFTER the primary, or it would win over it
+        assert profile.env_vars.index(var) > profile.env_vars.index(canonical[name])
     for name, var in canonical.items():
         profile = mock_providers_package[name]
         assert var in profile.env_vars, (name, var)
