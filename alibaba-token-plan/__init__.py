@@ -180,11 +180,7 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     description="Qwen Cloud Token Plan Team, Global/Singapore",
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
-        # BACKUP is a manual-failover slot, not automatic: resolution is
-        # first-set-wins, so it is read only when the primary is unset.
-        # Point it at a second Team seat's key and unset the primary to switch.
         "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
-        "ALIBABA_TOKEN_PLAN_TEAM_BACKUP_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
@@ -206,7 +202,6 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
-        "ALIBABA_TOKEN_PLAN_CN_TEAM_BACKUP_API_KEY",
         "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
     ),
     base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
