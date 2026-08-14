@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.4.0
+
+- Fold the four providers under one `Alibaba Token Plan ▸` row in the Hermes
+  model picker, with a member sub-picker, instead of four top-level rows. This
+  matches how Hermes presents Qwen, Kimi and MiniMax. Grouping is display only:
+  every slug remains individually addressable via `--provider` and
+  `/model <provider>:<model>`.
+- Requires Hermes with `ProviderProfile.group` (upstream change shipped
+  alongside this release). On an older Hermes the group is skipped and the
+  providers render as before — nothing breaks.
+- Shorten the display names now that the parent row carries the vendor:
+  `Token Plan Personal`, `Token Plan Team`, `Token Plan Personal (China)`,
+  `Token Plan Team (China)`. Drops "Global/Singapore" and "Bailian" from the
+  picker, matching the terseness of the built-in providers.
+
 ## 1.3.0
 
 - Declare `supports_vision=True` on all four providers. Seven models in the

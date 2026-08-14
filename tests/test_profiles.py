@@ -353,10 +353,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_3_0():
+def test_single_manifest_is_version_1_4_0():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.3.0"
+    assert scalars["version"] == "1.4.0"
 
 
 def test_manifest_declares_v2_metadata():
