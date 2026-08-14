@@ -10,6 +10,7 @@ catalogue as the conservative offline fallback.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from providers import register_provider
@@ -37,6 +38,15 @@ except ImportError:  # loaded without package context
     _fm = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_fm)
     PERSONAL_MODELS, TEAM_MODELS = _fm.PERSONAL_MODELS, _fm.TEAM_MODELS
+
+# Auxiliary-task candidates in preference order, cheapest usable first. These
+# are intersected with the caller's live entitlement, so a tier that cannot
+# reach one falls through to the next. The vision list exists because an aux
+# model is also used for image work: qwen3.6-flash, qwen3.6-plus and
+# qwen3.7-plus are on the measured multimodal set, and qwen3.7-max is NOT,
+# despite the family name.
+_AUX_PREFERENCE = ("qwen3.6-flash", "deepseek-v4-flash-0731", "deepseek-v4-flash")
+_VISION_AUX_PREFERENCE = ("qwen3.6-flash", "qwen3.6-plus", "qwen3.7-plus")
 
 _ALWAYS_THINKING_MODELS = {"minimax-m2.5"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
@@ -67,6 +77,62 @@ class QwenTokenPlanProfile(ProviderProfile):
             return None
         live_ids = {str(model).strip().lower() for model in live}
         return [model for model in TEAM_MODELS if model.lower() in live_ids]
+
+    def _resolve_credentials(self) -> tuple[str | None, str | None]:
+        """Return (api_key, base_url) from this profile's own env vars."""
+        api_key = None
+        base_url = None
+        for name in self.env_vars:
+            value = os.environ.get(name)
+            if not value:
+                continue
+            if name.endswith("_BASE_URL") or name.endswith("_URL"):
+                base_url = base_url or value
+            else:
+                api_key = api_key or value
+        return api_key, base_url or self.base_url
+
+    def resolve_aux_model(self, *, vision: bool = False) -> str:
+        """Return a live cheap model id for auxiliary tasks, or "".
+
+        ``default_aux_model`` is a constant in source, so it rots the moment
+        the plan retires that id: every auxiliary call then spends a round
+        trip 404ing. This catalogue does retire ids (``qwen3.8-max-preview``
+        left ``/models`` on 2026-08-06), so the cheap tier is resolved from
+        the caller's live entitlement instead.
+
+        Per the base contract this must be cheap, must never raise, and
+        returns "" so the caller falls through to ``default_aux_model``. The
+        result is cached for the life of the process because this runs on
+        client-resolution paths. Discovery is a ``GET /models``, which costs
+        no tokens.
+        """
+        cache = getattr(self, "_aux_model_cache", None)
+        if cache is None:
+            cache = {}
+            object.__setattr__(self, "_aux_model_cache", cache)
+        if vision in cache:
+            return cache[vision]
+
+        resolved = ""
+        try:
+            api_key, base_url = self._resolve_credentials()
+            if api_key:
+                live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
+                if live:
+                    entitled = {model.lower() for model in live}
+                    preference = _VISION_AUX_PREFERENCE if vision else _AUX_PREFERENCE
+                    resolved = next(
+                        (model for model in preference if model.lower() in entitled),
+                        "",
+                    )
+        except Exception:
+            # Never raise from a client-resolution path. An empty string is
+            # the documented "no answer" value and keeps default_aux_model.
+            resolved = ""
+
+        cache[vision] = resolved
+        return resolved
 
     def build_api_kwargs_extras(
         self,
@@ -141,6 +207,7 @@ alibaba_token_plan = QwenTokenPlanProfile(
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
     supports_health_check=False,
+    supports_vision=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -159,6 +226,7 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
     supports_health_check=False,
+    supports_vision=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -186,6 +254,7 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
     supports_health_check=False,
+    supports_vision=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=TEAM_MODELS,
 )
@@ -207,6 +276,7 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
     base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
     supports_health_check=False,
+    supports_vision=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=TEAM_MODELS,
 )

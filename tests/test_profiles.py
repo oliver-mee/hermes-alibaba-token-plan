@@ -256,6 +256,73 @@ def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_pack
     ) == ({}, {})
 
 
+def test_all_profiles_declare_vision(mock_providers_package):
+    """7 of the plan's models take image and video input, gateway-measured.
+
+    Hermes gates image routing on the provider profile
+    (tools/vision_tools.py consults supports_vision), so leaving the default
+    False tells it these providers cannot do vision at all.
+    """
+    mod = load_plugin()
+    for name in (
+        "alibaba_token_plan",
+        "alibaba_token_plan_team",
+        "alibaba_token_plan_cn",
+        "alibaba_token_plan_cn_team",
+    ):
+        assert getattr(mod, name).supports_vision is True, name
+
+
+def test_aux_model_resolves_from_live_entitlement(mock_providers_package, monkeypatch):
+    _set_live(monkeypatch, ["qwen3.8-max", "qwen3.6-flash", "glm-5.2"])
+    monkeypatch.setenv("ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY", "sk-sp-synthetic")
+    profile = load_plugin().alibaba_token_plan
+    assert profile.resolve_aux_model() == "qwen3.6-flash"
+
+
+def test_aux_model_falls_through_to_next_preference(mock_providers_package, monkeypatch):
+    """A tier without the cheapest candidate gets the next one, not nothing."""
+    _set_live(monkeypatch, ["qwen3.8-max", "deepseek-v4-flash-0731"])
+    monkeypatch.setenv("ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY", "sk-sp-synthetic")
+    profile = load_plugin().alibaba_token_plan
+    assert profile.resolve_aux_model() == "deepseek-v4-flash-0731"
+
+
+def test_aux_model_vision_preference_skips_text_only_models(
+    mock_providers_package, monkeypatch
+):
+    """qwen3.7-max is text-only despite the family name; qwen3.7-plus is not."""
+    _set_live(monkeypatch, ["qwen3.7-max", "qwen3.7-plus"])
+    monkeypatch.setenv("ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY", "sk-sp-synthetic")
+    profile = load_plugin().alibaba_token_plan
+    assert profile.resolve_aux_model(vision=True) == "qwen3.7-plus"
+
+
+def test_aux_model_returns_empty_without_a_key(mock_providers_package, monkeypatch):
+    """No credential means no discovery, and "" keeps default_aux_model."""
+    for env in ("QWEN_TOKEN_PLAN_API_KEY", "BAILIAN_TOKEN_PLAN_API_KEY",
+                "ALIBABA_TOKEN_PLAN_API_KEY", "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY"):
+        monkeypatch.delenv(env, raising=False)
+    profile = load_plugin().alibaba_token_plan
+    assert profile.resolve_aux_model() == ""
+
+
+def test_aux_model_never_raises_and_caches(mock_providers_package, monkeypatch):
+    """The base contract: cheap, cached, never raises."""
+    calls = []
+
+    def _boom(self, **kwargs):
+        calls.append(1)
+        raise RuntimeError("gateway down")
+
+    monkeypatch.setattr(MockProviderProfile, "fetch_models", _boom)
+    monkeypatch.setenv("ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY", "sk-sp-synthetic")
+    profile = load_plugin().alibaba_token_plan
+    assert profile.resolve_aux_model() == ""
+    assert profile.resolve_aux_model() == ""
+    assert len(calls) == 1, "second call should be served from the cache"
+
+
 def _read_manifest():
     """Return (scalars, tags) from the single plugin manifest.
 
@@ -286,10 +353,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_2_2():
+def test_single_manifest_is_version_1_3_0():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.2.2"
+    assert scalars["version"] == "1.3.0"
 
 
 def test_manifest_declares_v2_metadata():

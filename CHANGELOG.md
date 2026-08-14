@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.0
+
+- Declare `supports_vision=True` on all four providers. Seven models in the
+  plan take image and video input (`qwen3.8-max-preview`, `qwen3.7-plus`,
+  `qwen3.6-plus`, `qwen3.6-flash`, `kimi-k2.5`, `kimi-k2.6`, `kimi-k2.7-code`),
+  gateway-measured on real content. Hermes gates image routing on this flag
+  (`tools/vision_tools.py` consults the registered profile), so the default
+  `False` was telling it these providers could not do vision at all. Note
+  `qwen3.7-max` is text-only while `qwen3.7-plus` is not, so the split is
+  inside a family.
+- Implement `resolve_aux_model()`, the hook Hermes added on 2026-08-08. The
+  cheap auxiliary model is now picked from the caller's live entitlement
+  instead of a constant in source, with a separate preference order for
+  vision work so an image task never lands on a text-only model. This
+  catalogue does retire ids (`qwen3.8-max-preview` left `/models` on
+  2026-08-06), which is exactly the rot the hook exists to prevent.
+  Discovery is a `GET /models`, which costs no tokens, the result is cached
+  for the process, and any failure returns `""` so `default_aux_model`
+  still applies.
+- `supports_vision_tool_messages` stays at its `True` default. The vision
+  measurements were taken on user messages; whether the gateway accepts
+  list-type content in tool-result messages specifically has not been
+  probed.
+- Test-only: the standalone `MockProviderProfile` had drifted from upstream
+  `providers/base.py`. Added `supports_prompt_cache_key` and
+  `resolve_aux_model` so the mock keeps mirroring the real dataclass, which
+  is the whole reason it exists.
+
 ## 1.2.2
 
 - Adopt the manifest v2 fields Hermes 0.20.1 added (`manifest_version`,

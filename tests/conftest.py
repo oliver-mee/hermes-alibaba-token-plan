@@ -32,6 +32,7 @@ class MockProviderProfile:
     supports_health_check: bool = True
     supports_vision: bool = False
     supports_vision_tool_messages: bool = True
+    supports_prompt_cache_key: bool = False
     fallback_models: tuple = ()
     hostname: str = ""
     default_headers: dict = field(default_factory=dict)
@@ -54,6 +55,10 @@ class MockProviderProfile:
         timeout: float = 8.0,
     ) -> list[str] | None:
         return None
+
+    def resolve_aux_model(self, *, vision: bool = False) -> str:
+        """Upstream default: no live answer, caller keeps default_aux_model."""
+        return ""
 
 
 REGISTERED: dict[str, MockProviderProfile] = {}
