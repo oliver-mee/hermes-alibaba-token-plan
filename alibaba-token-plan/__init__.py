@@ -1,4 +1,4 @@
-"""Qwen Cloud Token Plan providers for Global and China.
+"""Alibaba Token Plan providers for Global and China.
 
 Both regions expose the same measured chat catalogue through separate
 credentials and OpenAI-compatible Chat Completions endpoints. Live ``/models``
@@ -119,8 +119,8 @@ alibaba_token_plan = QwenTokenPlanProfile(
         "qwencloud-token-plan",
         "bailian-token-plan",
     ),
-    display_name="Qwen Cloud Token Plan (Global)",
-    description="Qwen Cloud Token Plan Personal and Team, Global/Singapore",
+    display_name="Alibaba Token Plan Personal",
+    description="Personal tier, Global/Singapore endpoint",
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
         # Credential resolution for a registered provider reads ONLY this tuple
@@ -148,8 +148,8 @@ alibaba_token_plan = QwenTokenPlanProfile(
 alibaba_token_plan_cn = QwenTokenPlanProfile(
     name="alibaba-token-plan-cn",
     aliases=("alibaba_token_plan_cn", "aliyun-token-plan-cn", "token-plan-cn"),
-    display_name="Alibaba Cloud Token Plan (China)",
-    description="Alibaba Cloud Token Plan Personal, China/Beijing",
+    display_name="Alibaba Token Plan Personal CN",
+    description="Personal tier, China/Beijing endpoint (Bailian)",
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_CN_API_KEY",
@@ -176,8 +176,8 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
         "token-plan-team",
         "qwen-token-plan-team",
     ),
-    display_name="Qwen Cloud Token Plan (Team, Global)",
-    description="Qwen Cloud Token Plan Team, Global/Singapore",
+    display_name="Alibaba Token Plan Team",
+    description="Team tier, Global/Singapore endpoint",
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
@@ -197,8 +197,8 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
         "aliyun-token-plan-cn-team",
         "token-plan-cn-team",
     ),
-    display_name="Alibaba Cloud Token Plan (Team, China)",
-    description="Alibaba Cloud Token Plan Team, China/Beijing",
+    display_name="Alibaba Token Plan Team CN",
+    description="Team tier, China/Beijing endpoint (Bailian)",
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",

@@ -1,5 +1,5 @@
 name: alibaba-token-plan-provider
 kind: model-provider
-version: 1.2.0
-description: Qwen Cloud Token Plan providers for Global and China
+version: 1.2.1
+description: Alibaba Token Plan providers for Global and China
 author: Oliver Mee

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1
+
+- Shorten the four provider display names so the model picker stops truncating
+  them, and sort them as one block: `Alibaba Token Plan Personal`, `… Team`,
+  `… Personal CN`, `… Team CN`. Region comes last so the Global pair sorts
+  first; tier and endpoint move to the description, which the picker shows as
+  the subtitle.
+- Name the product consistently. Qwen Cloud is an alternate console view of the
+  same plan rather than a rebrand, so provider names no longer split across two
+  vendor words depending on region.
+
 ## 1.2.0
 
 - Refresh the catalogue to the 2026-08-13 measured dataset: add `qwen3.8-max`

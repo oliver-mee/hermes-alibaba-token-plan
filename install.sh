@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install, verify, or uninstall the consolidated Qwen Cloud Token Plan plugin.
+# Install, verify, or uninstall the consolidated Alibaba Token Plan plugin.
 set -euo pipefail
 
 HERMES_HOME="${HERMES_HOME:-${HOME:?Set HERMES_HOME or HOME}}"
@@ -78,7 +78,7 @@ verify_plugin() {
 
 if [[ "$ACTION" == verify ]]; then
   verify_plugin
-  printf 'Verified Qwen Cloud Token Plan plugin files in %s\n' "$DEST"
+  printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"
   exit 0
 fi
 
@@ -156,4 +156,4 @@ fi
 if [[ -n "$legacy_backup" ]]; then
   printf 'Migrated legacy profile %s (recovery copy: %s)\n' "$legacy_dir" "$legacy_backup"
 fi
-printf 'Verified Qwen Cloud Token Plan plugin files in %s\n' "$DEST"
+printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"

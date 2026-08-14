@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/oliver-mee/hermes-alibaba-token-plan)](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Cloud and Qwen Cloud Token Plan.
+Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Token Plan (Qwen Cloud is an alternate console view of the same plan, not a separate product).
 
 One installed plugin registers four providers, one per region and tier, because the two
 tiers have different catalogues and the `sk-sp-` key prefix is identical for both, so the
