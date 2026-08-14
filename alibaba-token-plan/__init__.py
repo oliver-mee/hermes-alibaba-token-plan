@@ -61,6 +61,24 @@ except ImportError:  # loaded without package context
 _AUX_PREFERENCE = ("qwen3.6-flash", "deepseek-v4-flash-0731", "deepseek-v4-flash")
 _VISION_AUX_PREFERENCE = ("qwen3.6-flash", "qwen3.6-plus", "qwen3.7-plus")
 
+# One collapsed picker row for all four providers instead of four top-level
+# rows, matching how Hermes presents Qwen, Kimi and MiniMax. Hermes folds this
+# via ProviderProfile.group (display only; every slug stays individually
+# addressable via --provider and /model <provider>:<model>). The field landed
+# upstream after this plugin shipped, so it is passed only when the installed
+# Hermes has it — an older Hermes rejects unknown dataclass kwargs and would
+# fail to load the plugin entirely.
+_PICKER_GROUP = (
+    "alibaba-token-plan",
+    "Alibaba Token Plan",
+    "Personal & Team tiers, Global & China",
+)
+_GROUP_KWARGS: dict[str, Any] = (
+    {"group": _PICKER_GROUP}
+    if "group" in getattr(ProviderProfile, "__dataclass_fields__", {})
+    else {}
+)
+
 _ALWAYS_THINKING_MODELS = {"minimax-m2.5"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
 
@@ -198,8 +216,9 @@ alibaba_token_plan = QwenTokenPlanProfile(
         "qwencloud-token-plan",
         "bailian-token-plan",
     ),
-    display_name="Alibaba Token Plan Personal",
-    description="Personal tier, Global/Singapore endpoint",
+    display_name="Token Plan Personal",
+    description="Alibaba Token Plan Personal (Global)",
+    **_GROUP_KWARGS,
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
         # Credential resolution for a registered provider reads ONLY this tuple
@@ -238,8 +257,9 @@ alibaba_token_plan = QwenTokenPlanProfile(
 alibaba_token_plan_cn = QwenTokenPlanProfile(
     name="alibaba-token-plan-cn",
     aliases=("alibaba_token_plan_cn", "aliyun-token-plan-cn", "token-plan-cn"),
-    display_name="Alibaba Token Plan Personal CN",
-    description="Personal tier, China/Beijing endpoint (Bailian)",
+    display_name="Token Plan Personal (China)",
+    description="Alibaba Token Plan Personal (China)",
+    **_GROUP_KWARGS,
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_CN_API_KEY",
@@ -277,8 +297,9 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
         "token-plan-team",
         "qwen-token-plan-team",
     ),
-    display_name="Alibaba Token Plan Team",
-    description="Team tier, Global/Singapore endpoint",
+    display_name="Token Plan Team",
+    description="Alibaba Token Plan Team (Global)",
+    **_GROUP_KWARGS,
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
@@ -309,8 +330,9 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
         "aliyun-token-plan-cn-team",
         "token-plan-cn-team",
     ),
-    display_name="Alibaba Token Plan Team CN",
-    description="Team tier, China/Beijing endpoint (Bailian)",
+    display_name="Token Plan Team (China)",
+    description="Alibaba Token Plan Team (China)",
+    **_GROUP_KWARGS,
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
     env_vars=(
         "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
