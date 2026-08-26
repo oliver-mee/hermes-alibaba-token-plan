@@ -79,7 +79,12 @@ def test_both_regions_register_from_one_plugin(mock_providers_package):
     assert set(global_profile.env_vars).isdisjoint(cn_profile.env_vars)
     assert global_profile.fallback_models == cn_profile.fallback_models == PERSONAL_MODELS
     assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
-    assert global_profile.supports_health_check is cn_profile.supports_health_check is False
+    assert global_profile.supports_health_check is cn_profile.supports_health_check is True
+    assert (
+        global_profile.supports_prompt_cache_key
+        is cn_profile.supports_prompt_cache_key
+        is True
+    )
 
 
 def test_global_credentials_keep_precedence_and_isolate_dashscope(mock_providers_package):

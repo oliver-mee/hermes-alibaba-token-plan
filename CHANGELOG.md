@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.4.0
+
+- Declare `supports_prompt_cache_key=True` on all four providers. The Token
+  Plan's OpenAI-compatible endpoint accepts `prompt_cache_key` on
+  `/chat/completions` (verified against `token-plan.ap-southeast-1`: HTTP 200,
+  no unknown-field rejection), which is the bar Hermes sets for this opt-in
+  field. Caching on the plan is implicit prefix matching and works without the
+  key, so this is a routing-affinity hint rather than a cache switch; it costs
+  nothing and the default `False` was leaving it on the table.
+- Flip `supports_health_check` to `True` on all four providers. `GET /models`
+  responds on every Token Plan endpoint, so there is no reason for
+  `hermes doctor` to skip the probe. Worth knowing what the probe does and
+  does not prove: the plan's catalogue is incomplete — `deepseek-v4-pro-0813`
+  answers requests but never appears in the list — so a green check means the
+  endpoint is reachable and the credential is good, not that the returned list
+  is exhaustive.
+
+Known gap, not fixed here: Hermes only injects Anthropic-style `cache_control`
+breakpoints when the provider id is in `ALIBABA_FAMILY_PROVIDERS`
+(`agent/prompt_caching.py`), which currently holds `opencode`, `opencode-zen`,
+`opencode-go` and `alibaba`. None of this plugin's four ids are in it, and
+neither is Hermes' own built-in `alibaba-coding-plan`, so all of them serve
+zero marker-driven cache hits on Qwen models. That set lives in Hermes core and
+cannot be reached from a plugin profile; it needs an upstream change.
+
 ## 1.3.0
 
 - Declare `supports_vision=True` on all four providers. Seven models in the
