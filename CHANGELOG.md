@@ -16,6 +16,10 @@
   answers requests but never appears in the list — so a green check means the
   endpoint is reachable and the credential is good, not that the returned list
   is exhaustive.
+- Add `deepseek-v4-pro-0813` to the Personal and Team chat catalogues (8 and
+  17 chat models respectively). It is servable by exact id though not listed
+  on `/models`, so it appears in the offline fallback but not the live
+  allowlist intersection. README catalogue lists and counts updated to match.
 
 Known gap, not fixed here: Hermes only injects Anthropic-style `cache_control`
 breakpoints when the provider id is in `ALIBABA_FAMILY_PROVIDERS`

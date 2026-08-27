@@ -18,6 +18,7 @@ PERSONAL_MODELS = (
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "glm-5.2",
 )
@@ -28,6 +29,7 @@ TEAM_MODELS = (
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
     "deepseek-v3.2",
@@ -165,6 +167,7 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "qwen3.7-plus",
             "qwen3.8-max",
             "deepseek-v4-pro",
+            "deepseek-v4-pro-0813",
             "deepseek-v4-flash-0731",
             "qwen3.6-flash",
             "qwen3.7-max",
