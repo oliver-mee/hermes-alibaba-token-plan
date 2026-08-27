@@ -10,11 +10,24 @@ catalogue as the conservative offline fallback.
 
 from __future__ import annotations
 
+import inspect
 import os
 from typing import Any
 
 from providers import register_provider
 from providers.base import ProviderProfile
+
+# `supports_prompt_cache_key` was added to ProviderProfile in a later Hermes than
+# the versions some users run (the compat matrix tests v0.18.2 and v0.19.0,
+# whose ProviderProfile.__init__ predates it). Passing the kwarg unconditionally
+# makes the plugin fail to load on those builds, so only pass it when the host
+# Hermes actually accepts it. The value is always True here; the decision is
+# whether the parameter exists at all.
+_SUPPORTS_PROMPT_CACHE_KEY_KWARG = "supports_prompt_cache_key" in inspect.signature(
+    ProviderProfile.__init__).parameters
+# Spread into each profile's constructor: exact params on new Hermes, nothing on old.
+_PROMPT_CACHE_KEY_ARGS = (
+    {"supports_prompt_cache_key": True} if _SUPPORTS_PROMPT_CACHE_KEY_KWARG else {})
 
 
 # The catalogue ships as fallback_models.py, GENERATED from the Token Plan
@@ -216,7 +229,8 @@ alibaba_token_plan = QwenTokenPlanProfile(
     # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
     # Caching itself is implicit prefix matching and works without it, but the
     # key gives the backend a stable per-session routing hint at zero cost.
-    supports_prompt_cache_key=True,
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -244,7 +258,8 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
     # Caching itself is implicit prefix matching and works without it, but the
     # key gives the backend a stable per-session routing hint at zero cost.
-    supports_prompt_cache_key=True,
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -281,7 +296,8 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
     # Caching itself is implicit prefix matching and works without it, but the
     # key gives the backend a stable per-session routing hint at zero cost.
-    supports_prompt_cache_key=True,
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
     default_aux_model="qwen3.6-flash",
     fallback_models=TEAM_MODELS,
 )
@@ -312,7 +328,8 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
     # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
     # Caching itself is implicit prefix matching and works without it, but the
     # key gives the backend a stable per-session routing hint at zero cost.
-    supports_prompt_cache_key=True,
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
     default_aux_model="qwen3.6-flash",
     fallback_models=TEAM_MODELS,
 )
