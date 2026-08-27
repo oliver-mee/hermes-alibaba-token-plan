@@ -206,8 +206,17 @@ alibaba_token_plan = QwenTokenPlanProfile(
     ),
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
-    supports_health_check=False,
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
     supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    supports_prompt_cache_key=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -225,8 +234,17 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     ),
     base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
-    supports_health_check=False,
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
     supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    supports_prompt_cache_key=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -253,8 +271,17 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     ),
     base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
-    supports_health_check=False,
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
     supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    supports_prompt_cache_key=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=TEAM_MODELS,
 )
@@ -275,8 +302,17 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
     ),
     base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
     auth_type="api_key",
-    supports_health_check=False,
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
     supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    supports_prompt_cache_key=True,
     default_aux_model="qwen3.6-flash",
     fallback_models=TEAM_MODELS,
 )

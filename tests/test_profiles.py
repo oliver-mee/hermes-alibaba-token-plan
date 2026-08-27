@@ -18,6 +18,7 @@ PERSONAL_MODELS = (
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "glm-5.2",
 )
@@ -28,6 +29,7 @@ TEAM_MODELS = (
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
     "deepseek-v3.2",
@@ -79,7 +81,12 @@ def test_both_regions_register_from_one_plugin(mock_providers_package):
     assert set(global_profile.env_vars).isdisjoint(cn_profile.env_vars)
     assert global_profile.fallback_models == cn_profile.fallback_models == PERSONAL_MODELS
     assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
-    assert global_profile.supports_health_check is cn_profile.supports_health_check is False
+    assert global_profile.supports_health_check is cn_profile.supports_health_check is True
+    assert (
+        global_profile.supports_prompt_cache_key
+        is cn_profile.supports_prompt_cache_key
+        is True
+    )
 
 
 def test_global_credentials_keep_precedence_and_isolate_dashscope(mock_providers_package):
@@ -160,6 +167,7 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "qwen3.7-plus",
             "qwen3.8-max",
             "deepseek-v4-pro",
+            "deepseek-v4-pro-0813",
             "deepseek-v4-flash-0731",
             "qwen3.6-flash",
             "qwen3.7-max",
@@ -353,10 +361,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_3_0():
+def test_single_manifest_is_version_1_4_0():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.3.0"
+    assert scalars["version"] == "1.4.0"
 
 
 def test_manifest_declares_v2_metadata():

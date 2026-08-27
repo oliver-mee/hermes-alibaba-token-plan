@@ -44,6 +44,7 @@ personal = (
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "glm-5.2",
 )
@@ -54,6 +55,7 @@ team = (
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
     "deepseek-v3.2",
