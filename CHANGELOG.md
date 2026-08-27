@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add `deepseek-v4-pro-0813` to the Personal and Team chat catalogues (8 and
+  17 chat models respectively). It is servable by exact id though not listed
+  on `/models`, so it appears in the offline fallback but not the live
+  allowlist intersection. README catalogue lists and counts updated to match.
+
 ## 1.3.0
 
 - Declare `supports_vision=True` on all four providers. Seven models in the
