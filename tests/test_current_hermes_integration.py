@@ -93,7 +93,7 @@ assert global_profile.env_vars == global_env
 assert cn_profile.env_vars == cn_env
 assert global_profile.fallback_models == cn_profile.fallback_models == personal
 assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
-assert global_profile.supports_health_check is cn_profile.supports_health_check is False
+assert global_profile.supports_health_check is cn_profile.supports_health_check is True
 assert "DASHSCOPE_API_KEY" not in global_profile.env_vars
 
 for profile in (global_profile, cn_profile):
@@ -221,7 +221,7 @@ doctor_rows = {
     if row[0] in {global_profile.display_name, cn_profile.display_name}
 }
 assert set(doctor_rows) == {global_profile.display_name, cn_profile.display_name}
-assert all(row[4] is False for row in doctor_rows.values())
+assert all(row[4] is True for row in doctor_rows.values())
 
 print("Hermes Token Plan integration probe: PASS")
 '''
