@@ -14,9 +14,10 @@
 # Always handle 'Access to model denied' at call time regardless: a LAPSED subscription
 # still lists its full catalogue on /models and then denies every completion.
 
-# PERSONAL: 8 chat models
+# PERSONAL: 9 chat models
 PERSONAL_MODELS = (
     "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
@@ -26,9 +27,10 @@ PERSONAL_MODELS = (
     "glm-5.2",
 )
 
-# TEAM: 17 chat models
+# TEAM: 18 chat models
 TEAM_MODELS = (
     "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",

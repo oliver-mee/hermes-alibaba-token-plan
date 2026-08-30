@@ -14,6 +14,7 @@ GLOBAL_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mod
 CN_URL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 PERSONAL_MODELS = (
     "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
@@ -24,6 +25,7 @@ PERSONAL_MODELS = (
 )
 TEAM_MODELS = (
     "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
