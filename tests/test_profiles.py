@@ -168,6 +168,7 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "glm-5.2",
             "qwen3.7-plus",
             "qwen3.8-max",
+            "qwen3.8-flash",
             "deepseek-v4-pro",
             "deepseek-v4-pro-0813",
             "deepseek-v4-flash-0731",
