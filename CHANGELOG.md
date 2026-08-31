@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.5.2
+
+- Keep catalogue rows marked `status: unlisted` in live model discovery when
+  they have been proven callable by exact ID. This fixes `deepseek-v4-pro-0813`
+  disappearing from the Hermes picker even though the Token Plan gateway returns
+  HTTP 200 with output for it on both Team and Personal.
+- Filter discovery against the provider's own tier catalogue instead of always
+  using the Team tuple. Personal providers therefore cannot accidentally expose
+  Team-only models, while both Personal and Team retain their own unlisted
+  callable IDs.
+- Generate an explicit `UNLISTED_MODELS` tuple and add contract tests for the
+  unlisted-but-servable path, per-tier filtering, and the updated manifest.
+- Live evidence: one bounded Personal exact-ID inference probe on 2026-08-31;
+  Team callability is operator-confirmed. No `/models` listing change is
+  implied by this release.
+
 ## 1.5.0
 
 - Fold the four providers under one `Alibaba Token Plan ▸` row in the Hermes

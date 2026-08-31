@@ -6,10 +6,12 @@
 # for both, so the tier cannot be detected from the key.
 #
 # PREFER live /models over these lists. Verified 2026-07-21 with active keys for both
-# tiers: /models IS tier-aware and enforcement is real, so live discovery gives each
-# user exactly their entitlement without needing to detect the tier.
+# tiers: /models is tier-aware, so live discovery gives each user the listed
+# entitlement without needing to detect the tier. Known callable-but-unlisted
+# IDs are retained separately because exact-ID inference can be available even
+# when Alibaba omits an ID from /models.
 # These static lists are the OFFLINE FALLBACK for when the probe fails. PERSONAL is the
-# safer default there, since nobody is offered something unusable.
+# safer default there, since nobody is offered something outside its tier catalogue.
 #
 # Always handle 'Access to model denied' at call time regardless: a LAPSED subscription
 # still lists its full catalogue on /models and then denies every completion.
@@ -47,6 +49,15 @@ TEAM_MODELS = (
     "glm-5.1",
     "glm-5",
     "MiniMax-M2.5",
+)
+
+# Unlisted-but-servable ids: answer HTTP 200 when called by exact id yet are
+# deliberately ABSENT from the /models discovery listing (measured gateway
+# behaviour; the /models list is the entitlement surface, and Alibaba's
+# discovery omits these ids regardless). The plugin must keep offering them
+# at call time even though live discovery never returns them.
+UNLISTED_MODELS = (
+    "deepseek-v4-pro-0813",
 )
 
 DEFAULT_MODEL = "qwen3.7-plus"

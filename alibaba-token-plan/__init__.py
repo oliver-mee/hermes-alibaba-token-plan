@@ -1,11 +1,11 @@
 """Alibaba Token Plan providers for Global and China.
 
-Both regions expose the same measured chat catalogue through separate
-credentials and OpenAI-compatible Chat Completions endpoints. Live ``/models``
-responses are entitlement-aware but may also contain image, video, unknown, or
-temporarily advertised IDs, so discovery intersects them with the canonical
-Team chat allowlist below. If discovery fails, Hermes uses the Personal chat
-catalogue as the conservative offline fallback.
+Both regions expose measured chat catalogues through separate credentials and
+OpenAI-compatible Chat Completions endpoints. Live ``/models`` responses are
+entitlement-aware but may also contain image, video, unknown, or temporarily
+advertised IDs, so discovery intersects them with each provider's tier catalogue.
+Known callable-but-unlisted IDs are retained separately when exact-ID inference
+has been measured.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ _PROMPT_CACHE_KEY_ARGS = (
 # path fallback keeps the module importable when a test or tool loads
 # __init__.py directly as a lone file.
 try:
-    from .fallback_models import PERSONAL_MODELS, TEAM_MODELS
+    from .fallback_models import PERSONAL_MODELS, TEAM_MODELS, UNLISTED_MODELS
 except ImportError:  # loaded without package context
     import importlib.util as _ilu
     from pathlib import Path as _Path
@@ -50,7 +50,10 @@ except ImportError:  # loaded without package context
         "_token_plan_fallback_models", _Path(__file__).with_name("fallback_models.py"))
     _fm = _ilu.module_from_spec(_spec)
     _spec.loader.exec_module(_fm)
+    # UNLISTED_MODELS is newer than PERSONAL/TEAM; default to empty for any
+    # fallback file that predates it so an old copy stays loadable.
     PERSONAL_MODELS, TEAM_MODELS = _fm.PERSONAL_MODELS, _fm.TEAM_MODELS
+    UNLISTED_MODELS = getattr(_fm, "UNLISTED_MODELS", ())
 
 # Auxiliary-task candidates in preference order, cheapest usable first. These
 # are intersected with the caller's live entitlement, so a tier that cannot
@@ -98,6 +101,15 @@ class QwenTokenPlanProfile(ProviderProfile):
         ``None`` preserves Hermes' normal fallback behaviour when the request
         fails. A successful response containing no recognised chat IDs returns
         an empty list instead of promoting unknown gateway entries.
+
+        UNLISTED_MODELS are kept even though live discovery never returns them:
+        the gateway answers these ids with HTTP 200 by exact id but
+        deliberately omits them from /models (measured 2026-08-18 and
+        2026-08-31 — deepseek-v4-pro-0813 serves on both tiers while absent
+        from the listing). Dropping them makes selectable, working models
+        vanish from the picker, so they are appended when live discovery
+        succeeds. They are still gated by the per-tier catalogue: a team-only
+        unlisted id never appears on a personal profile.
         """
         live = super().fetch_models(
             api_key=api_key,
@@ -107,7 +119,12 @@ class QwenTokenPlanProfile(ProviderProfile):
         if live is None:
             return None
         live_ids = {str(model).strip().lower() for model in live}
-        return [model for model in TEAM_MODELS if model.lower() in live_ids]
+        catalog = self.fallback_models if self.fallback_models else TEAM_MODELS
+        unlisted_ids = {str(model).strip().lower() for model in UNLISTED_MODELS}
+        return [
+            model for model in catalog
+            if model.lower() in live_ids or model.lower() in unlisted_ids
+        ]
 
     def _resolve_credentials(self) -> tuple[str | None, str | None]:
         """Return (api_key, base_url) from this profile's own env vars."""

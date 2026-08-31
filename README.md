@@ -96,48 +96,56 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 
 ## Personal and Team discovery
 
-Authenticated `/models` discovery remains enabled. The gateway response is intersected with the measured 17-model Team chat allowlist. This excludes image, video, audio, unknown, and not-yet-verified IDs while retaining the canonical catalogue order.
+Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
-- Personal keys currently resolve to eight chat models.
-- Team keys currently resolve to seventeen chat models.
-- If discovery fails or no key is configured, the Personal providers use the Personal eight as the conservative offline fallback; the Team providers fall back to the Team catalogue.
+- Personal keys currently resolve to nine chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- Team keys currently resolve to eighteen chat models, including `deepseek-v4-pro-0813`.
+- If discovery fails or no key is configured, the Personal providers use the Personal nine as the offline fallback; the Team providers fall back to the Team catalogue.
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
-(from the Token Plan wiki's measured dataset). Update it by regenerating
-upstream and copying the file over, never by hand-editing the tuples.
+(from the Token Plan wiki's measured dataset). `UNLISTED_MODELS` is generated
+from catalogue rows marked `status: unlisted`; it is reserved for models proven
+callable despite being absent from `/models`. Update it by regenerating upstream
+and copying the file over, never by hand-editing the tuples.
 
-`supports_health_check` is deliberately disabled. A lapsed Token Plan key can still receive HTTP 200 and a full-looking `/models` response while every inference request is denied. Discovery is useful for the picker, but it is not proof that the subscription can call a model.
+`supports_health_check` is enabled so Hermes can check endpoint reachability, but
+`GET /models` is not proof that every exact-ID model is listed or that a lapsed
+subscription can infer. `deepseek-v4-pro-0813` is the measured exception here:
+it returns HTTP 200 with output on both Team and Personal despite being absent
+from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 
 ### Personal chat catalogue and offline fallback
 
 1. `qwen3.8-max`
-2. `qwen3.7-max`
-3. `qwen3.7-plus`
-4. `qwen3.6-flash`
-5. `deepseek-v4-pro`
-6. `deepseek-v4-pro-0813`
-7. `deepseek-v4-flash-0731`
-8. `glm-5.2`
+2. `qwen3.8-flash`
+3. `qwen3.7-max`
+4. `qwen3.7-plus`
+5. `qwen3.6-flash`
+6. `deepseek-v4-pro`
+7. `deepseek-v4-pro-0813`
+8. `deepseek-v4-flash-0731`
+9. `glm-5.2`
 
 ### Team chat catalogue
 
 1. `qwen3.8-max`
-2. `qwen3.7-max`
-3. `qwen3.7-plus`
-4. `qwen3.6-plus`
-5. `qwen3.6-flash`
-6. `deepseek-v4-pro`
-7. `deepseek-v4-pro-0813`
-8. `deepseek-v4-flash`
-9. `deepseek-v4-flash-0731`
-10. `deepseek-v3.2`
-11. `kimi-k2.7-code`
-12. `kimi-k2.6`
-13. `kimi-k2.5`
-14. `glm-5.2`
-15. `glm-5.1`
-16. `glm-5`
-17. `MiniMax-M2.5`
+2. `qwen3.8-flash`
+3. `qwen3.7-max`
+4. `qwen3.7-plus`
+5. `qwen3.6-plus`
+6. `qwen3.6-flash`
+7. `deepseek-v4-pro`
+8. `deepseek-v4-pro-0813`
+9. `deepseek-v4-flash`
+10. `deepseek-v4-flash-0731`
+11. `deepseek-v3.2`
+12. `kimi-k2.7-code`
+13. `kimi-k2.6`
+14. `kimi-k2.5`
+15. `glm-5.2`
+16. `glm-5.1`
+17. `glm-5`
+18. `MiniMax-M2.5`
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
@@ -160,7 +168,7 @@ The plugin does not force a provider-wide vision flag. Hermes reads per-model me
 - `kimi-k2.6`
 - `kimi-k2.5`
 
-The other eight chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
+The other ten chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
 
 ## Use
 

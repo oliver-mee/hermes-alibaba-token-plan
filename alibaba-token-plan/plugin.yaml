@@ -1,6 +1,6 @@
 name: alibaba-token-plan-provider
 kind: model-provider
-version: 1.5.0
+version: 1.5.2
 description: Alibaba Token Plan providers for Global and China
 author: Oliver Mee
 

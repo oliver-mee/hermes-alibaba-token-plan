@@ -186,19 +186,53 @@ def test_discovery_filters_team_and_both_regions_match(
 ):
     _set_live(monkeypatch, list(reversed(TEAM_MODELS)) + ["happyhorse-1.1-t2v"])
     mod = load_plugin()
-    assert tuple(mod.alibaba_token_plan.fetch_models(api_key="synthetic")) == TEAM_MODELS
-    assert tuple(mod.alibaba_token_plan_cn.fetch_models(api_key="synthetic")) == TEAM_MODELS
+    assert tuple(mod.alibaba_token_plan_team.fetch_models(api_key="synthetic")) == TEAM_MODELS
+    assert tuple(mod.alibaba_token_plan_cn_team.fetch_models(api_key="synthetic")) == TEAM_MODELS
 
 
 def test_discovery_handles_unknown_only_and_failed_fetch(
     mock_providers_package, monkeypatch
 ):
+    # With a live response of only unknown ids, no ID is promoted — except the
+    # catalogue's unlisted-but-servable ids (deepseek-v4-pro-0813), which are
+    # kept even though live discovery never returns them (see fetch_models docstring).
     _set_live(monkeypatch, ["qwen-image-2.0", "unknown"])
     profile = load_plugin().alibaba_token_plan
-    assert profile.fetch_models(api_key="synthetic") == []
+    assert profile.fetch_models(api_key="synthetic") == ["deepseek-v4-pro-0813"]
 
     _set_live(monkeypatch, None)
     assert profile.fetch_models(api_key="synthetic") is None
+
+
+def test_discovery_keeps_unlisted_models_when_absent_from_live(
+    mock_providers_package, monkeypatch
+):
+    """Unlisted-but-servable ids survive discovery even when /models omits them.
+
+    deepseek-v4-pro-0813 answers HTTP 200 by exact id on both tiers yet is
+    deliberately absent from the /models listing (probed 2026-08-18 &
+    2026-08-31). It must stay selectable, so fetch_models returns it alongside
+    the live entitlement. Team-only unlisted ids must not leak to Personal.
+    """
+    live = [
+        "qwen3.8-max",
+        "qwen3.8-flash",
+        "qwen3.7-max",
+        "qwen3.7-plus",
+        "qwen3.6-flash",
+        "deepseek-v4-pro",
+        "deepseek-v4-flash-0731",
+        "glm-5.2",
+    ]  # note: deepseek-v4-pro-0813 absent from live
+    _set_live(monkeypatch, live)
+    personal = load_plugin().alibaba_token_plan
+    assert "deepseek-v4-pro-0813" in personal.fetch_models(api_key="synthetic")
+
+    # team profile also keeps it, in canonical order
+    team = load_plugin().alibaba_token_plan_team
+    result = team.fetch_models(api_key="synthetic")
+    assert "deepseek-v4-pro-0813" in result
+    assert result == [m for m in TEAM_MODELS if m in live or m == "deepseek-v4-pro-0813"]
 
 
 def test_hybrid_models_only_receive_explicit_reasoning_toggle(mock_providers_package):
@@ -364,10 +398,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_5_0():
+def test_single_manifest_is_version_1_5_2():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.5.0"
+    assert scalars["version"] == "1.5.2"
 
 
 def test_manifest_declares_v2_metadata():
