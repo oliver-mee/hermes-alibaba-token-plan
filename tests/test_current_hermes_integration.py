@@ -40,6 +40,7 @@ from providers.base import ProviderProfile
 
 personal = (
     "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
@@ -50,6 +51,7 @@ personal = (
 )
 team = (
     "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
@@ -84,8 +86,15 @@ cn_url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
 
 global_profile = get_provider_profile("alibaba-token-plan")
 cn_profile = get_provider_profile("alibaba-token-plan-cn")
-assert global_profile is not None and cn_profile is not None
-assert global_profile.__class__ is cn_profile.__class__
+global_team_profile = get_provider_profile("alibaba-token-plan-team")
+cn_team_profile = get_provider_profile("alibaba-token-plan-cn-team")
+assert (
+    global_profile is not None
+    and cn_profile is not None
+    and global_team_profile is not None
+    and cn_team_profile is not None
+)
+assert global_profile.__class__ is cn_profile.__class__ is global_team_profile.__class__
 assert global_profile.api_mode == cn_profile.api_mode == "chat_completions"
 assert global_profile.base_url == global_url
 assert cn_profile.base_url == cn_url
@@ -142,21 +151,31 @@ try:
         "unknown-preview",
         *reversed(personal),
     ]
-    assert provider_model_ids("alibaba-token-plan") == list(personal)
+    picker = provider_model_ids("alibaba-token-plan")
+    assert set(personal).issubset(picker)
+    assert "wan2.7-image" not in picker
+    assert "unknown-preview" not in picker
+    assert "deepseek-v4-pro-0813" in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: [
         "happyhorse-1.1-t2v",
         *reversed(team),
         "qwen-image-2.0",
     ]
-    # The plugin boundary preserves canonical order. Current Hermes main
-    # prepends fallback_models before merging live-only entries, while 0.18.2
-    # returns the filtered live list directly; both must expose exactly Team.
-    assert global_profile.fetch_models(api_key="synthetic") == list(team)
-    assert set(provider_model_ids("alibaba-token-plan")) == set(team)
+    # The Team provider has the Team fallback and must be tested here; the
+    # Personal provider intentionally uses the smaller Personal catalogue.
+    assert global_team_profile.fetch_models(api_key="synthetic") == list(team)
+    picker = provider_model_ids("alibaba-token-plan-team")
+    assert set(team).issubset(picker)
+    assert "happyhorse-1.1-t2v" not in picker
+    assert "qwen-image-2.0" not in picker
+    assert "deepseek-v4-pro-0813" in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: ["unknown", "wan2.7-image"]
-    assert provider_model_ids("alibaba-token-plan") == list(personal)
+    picker = provider_model_ids("alibaba-token-plan")
+    assert "deepseek-v4-pro-0813" in picker
+    assert "unknown" not in picker
+    assert "wan2.7-image" not in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: None
     assert provider_model_ids("alibaba-token-plan") == list(personal)
@@ -164,8 +183,11 @@ try:
     os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
     os.environ["ALIBABA_TOKEN_PLAN_CN_API_KEY"] = "synthetic-cn-key"
     ProviderProfile.fetch_models = lambda self, **kwargs: list(reversed(team))
-    assert cn_profile.fetch_models(api_key="synthetic") == list(team)
-    assert set(provider_model_ids("alibaba-token-plan-cn")) == set(team)
+    assert cn_team_profile.fetch_models(api_key="synthetic") == list(team)
+    picker = provider_model_ids("alibaba-token-plan-cn-team")
+    assert set(team).issubset(picker)
+    assert "qwen-image-2.0" not in picker
+    assert "deepseek-v4-pro-0813" in picker
 finally:
     ProviderProfile.fetch_models = original_fetch
     os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
