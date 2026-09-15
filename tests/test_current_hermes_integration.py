@@ -33,7 +33,10 @@ from agent.auxiliary_client import _get_aux_model_for_provider
 from agent.model_metadata import _infer_provider_from_url
 from agent.transports.chat_completions import ChatCompletionsTransport
 from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credentials
-from hermes_cli.doctor_connectivity import _build_apikey_providers_list
+try:  # doctor split its connectivity helpers into their own module upstream
+    from hermes_cli.doctor_connectivity import _build_apikey_providers_list
+except ImportError:  # Hermes <= v0.19.0
+    from hermes_cli.doctor import _build_apikey_providers_list
 from hermes_cli.models import CANONICAL_PROVIDERS, provider_model_ids
 from providers import get_provider_profile
 from providers.base import ProviderProfile
