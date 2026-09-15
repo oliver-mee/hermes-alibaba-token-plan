@@ -33,7 +33,7 @@ from agent.auxiliary_client import _get_aux_model_for_provider
 from agent.model_metadata import _infer_provider_from_url
 from agent.transports.chat_completions import ChatCompletionsTransport
 from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credentials
-from hermes_cli.doctor import _build_apikey_providers_list
+from hermes_cli.doctor_connectivity import _build_apikey_providers_list
 from hermes_cli.models import CANONICAL_PROVIDERS, provider_model_ids
 from providers import get_provider_profile
 from providers.base import ProviderProfile
@@ -47,6 +47,7 @@ personal = (
     "deepseek-v4-pro",
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
+    "deepseek-v4.1-flash",
     "glm-5.2",
 )
 team = (
@@ -60,6 +61,7 @@ team = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
+    "deepseek-v4.1-flash",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",

@@ -98,9 +98,9 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 
 Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
-- Personal keys currently resolve to nine chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to eighteen chat models, including `deepseek-v4-pro-0813`.
-- If discovery fails or no key is configured, the Personal providers use the Personal nine as the offline fallback; the Team providers fall back to the Team catalogue.
+- Personal keys currently resolve to ten chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- Team keys currently resolve to nineteen chat models, including `deepseek-v4-pro-0813`.
+- If discovery fails or no key is configured, the Personal providers use the Personal ten as the offline fallback; the Team providers fall back to the Team catalogue.
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
 (from the Token Plan wiki's measured dataset). `UNLISTED_MODELS` is generated
@@ -124,7 +124,8 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 6. `deepseek-v4-pro`
 7. `deepseek-v4-pro-0813`
 8. `deepseek-v4-flash-0731`
-9. `glm-5.2`
+9. `deepseek-v4.1-flash`
+10. `glm-5.2`
 
 ### Team chat catalogue
 
@@ -138,14 +139,15 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 8. `deepseek-v4-pro-0813`
 9. `deepseek-v4-flash`
 10. `deepseek-v4-flash-0731`
-11. `deepseek-v3.2`
-12. `kimi-k2.7-code`
-13. `kimi-k2.6`
-14. `kimi-k2.5`
-15. `glm-5.2`
-16. `glm-5.1`
-17. `glm-5`
-18. `MiniMax-M2.5`
+11. `deepseek-v4.1-flash`
+12. `deepseek-v3.2`
+13. `kimi-k2.7-code`
+14. `kimi-k2.6`
+15. `kimi-k2.5`
+16. `glm-5.2`
+17. `glm-5.1`
+18. `glm-5`
+19. `MiniMax-M2.5`
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 

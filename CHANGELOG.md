@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.3
+
+- Catalogue refresh (generated, from the measured Token Plan dataset): add
+  `deepseek-v4.1-flash` to both tier lists. The id listed on `/models` on
+  2026-09-15 across global Team, global Personal, and CN Team, with the
+  launch night discount active on Personal and Team. Personal is now ten chat
+  models, Team nineteen.
+- No behavioural changes: transports, thinking profiles, health checks, and
+  credential namespaces are untouched. `deepseek-v4.1-flash` follows the
+  existing deepseek hybrid-thinking handling; it does not force the qwen3.8
+  effort/budget mutual exclusion.
+
 ## 1.5.2
 
 - Keep catalogue rows marked `status: unlisted` in live model discovery when

@@ -21,6 +21,7 @@ PERSONAL_MODELS = (
     "deepseek-v4-pro",
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
+    "deepseek-v4.1-flash",
     "glm-5.2",
 )
 TEAM_MODELS = (
@@ -34,6 +35,7 @@ TEAM_MODELS = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
+    "deepseek-v4.1-flash",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
@@ -172,6 +174,7 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "deepseek-v4-pro",
             "deepseek-v4-pro-0813",
             "deepseek-v4-flash-0731",
+            "deepseek-v4.1-flash",
             "qwen3.6-flash",
             "qwen3.7-max",
             "unknown-preview",
@@ -398,10 +401,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_5_2():
+def test_single_manifest_is_version_1_5_3():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.5.2"
+    assert scalars["version"] == "1.5.3"
 
 
 def test_manifest_declares_v2_metadata():
