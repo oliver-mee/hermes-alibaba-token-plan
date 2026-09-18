@@ -82,7 +82,11 @@ _GROUP_KWARGS: dict[str, Any] = (
     else {}
 )
 
-_ALWAYS_THINKING_MODELS = {"minimax-m2.5"}
+# Always-thinking rows: enable_thinking:false returns 400 on the gateway
+# (probed 2026-09-18 for glm-5.3 on the plan gateway; MiniMax guard is older).
+# Sending the toggle only when the user explicitly enables reasoning is safe:
+# the gateway accepts enable_thinking:true on both.
+_ALWAYS_THINKING_MODELS = {"minimax-m2.5", "glm-5.3"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
 
 

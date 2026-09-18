@@ -52,6 +52,7 @@ personal = (
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
     "glm-5.2",
+    "glm-5.3",
 )
 team = (
     "qwen3.8-max",
@@ -70,6 +71,7 @@ team = (
     "kimi-k2.6",
     "kimi-k2.5",
     "glm-5.2",
+    "glm-5.3",
     "glm-5.1",
     "glm-5",
     "MiniMax-M2.5",
@@ -210,7 +212,8 @@ def extra_body(profile, model, config):
     )
     return kwargs.get("extra_body", {})
 
-for model in (model for model in team if model not in {"qwen3.8-max", "MiniMax-M2.5"}):
+always_thinking = {"MiniMax-M2.5", "glm-5.3"}
+for model in (model for model in team if model not in {"qwen3.8-max"} | always_thinking):
     assert extra_body(global_profile, model, None) == {}
     assert extra_body(global_profile, model, {"effort": "high"}) == {}
     assert extra_body(global_profile, model, {"enabled": True}) == {"enable_thinking": True}
@@ -231,11 +234,9 @@ assert extra_body(
     "qwen3.8-max",
     {"enabled": False, "effort": "none"},
 ) == {"enable_thinking": False}
-assert extra_body(
-    global_profile,
-    "MiniMax-M2.5",
-    {"enabled": False},
-) == {}
+for always_model in ("MiniMax-M2.5", "glm-5.3"):
+    assert extra_body(global_profile, always_model, {"enabled": False}) == {}
+    assert extra_body(global_profile, always_model, {"enabled": True}) == {"enable_thinking": True}
 assert extra_body(
     global_profile,
     "future-model",

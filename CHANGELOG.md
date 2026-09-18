@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.4
+
+- Catalogue refresh (generated, from the measured Token Plan dataset): add
+  `glm-5.3` to both tier lists. The id listed on `/models` on 2026-09-17
+  across global Team, global Personal, and CN Team. Personal is now eleven
+  chat models, Team twenty.
+- `glm-5.3` is always-thinking: the gateway rejects `enable_thinking:false`
+  with 400 `restricted to True` (probed 2026-09-18), so it joins the
+  always-thinking guard with `MiniMax-M2.5` and never receives the toggle
+  off. Unlike its sibling `glm-5.2`, which can disable thinking.
+- Everything else untouched: transports, health checks, and credential
+  namespaces are unchanged.
+
 ## 1.5.3
 
 - Catalogue refresh (generated, from the measured Token Plan dataset): add

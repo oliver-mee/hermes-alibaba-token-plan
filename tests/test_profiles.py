@@ -23,6 +23,7 @@ PERSONAL_MODELS = (
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
     "glm-5.2",
+    "glm-5.3",
 )
 TEAM_MODELS = (
     "qwen3.8-max",
@@ -41,6 +42,7 @@ TEAM_MODELS = (
     "kimi-k2.6",
     "kimi-k2.5",
     "glm-5.2",
+    "glm-5.3",
     "glm-5.1",
     "glm-5",
     "MiniMax-M2.5",
@@ -177,6 +179,7 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "deepseek-v4.1-flash",
             "qwen3.6-flash",
             "qwen3.7-max",
+            "glm-5.3",
             "unknown-preview",
         ],
     )
@@ -242,7 +245,7 @@ def test_hybrid_models_only_receive_explicit_reasoning_toggle(mock_providers_pac
     profile = load_plugin().alibaba_token_plan
     # qwen3.8-max is hybrid too, but additionally maps reasoning_effort, so it
     # gets its own test below rather than the generic no-effort expectation.
-    hybrid = [model for model in TEAM_MODELS if model not in {"qwen3.8-max", "MiniMax-M2.5"}]
+    hybrid = [model for model in TEAM_MODELS if model not in {"qwen3.8-max", "MiniMax-M2.5", "glm-5.3"}]
     for model in hybrid:
         assert profile.build_api_kwargs_extras(model=model, reasoning_config=None) == ({}, {})
         assert profile.build_api_kwargs_extras(
@@ -288,16 +291,19 @@ def test_qwen38_effort_mapping_as_hybrid(mock_providers_package):
     assert body == {}
 
 
-def test_minimax_always_thinking_guard_and_unknown_isolation(mock_providers_package):
+def test_always_thinking_guard_and_unknown_isolation(mock_providers_package):
     profile = load_plugin().alibaba_token_plan
-    assert profile.build_api_kwargs_extras(
-        model="MiniMax-M2.5",
-        reasoning_config={"enabled": False},
-    ) == ({}, {})
-    assert profile.build_api_kwargs_extras(
-        model="MiniMax-M2.5",
-        reasoning_config={"enabled": True},
-    ) == ({"enable_thinking": True}, {})
+    # MiniMax-M2.5 and glm-5.3 reject enable_thinking:false at the gateway
+    # (400 'restricted to True'), so the plugin must never send the toggle off.
+    for model in ("MiniMax-M2.5", "glm-5.3"):
+        assert profile.build_api_kwargs_extras(
+            model=model,
+            reasoning_config={"enabled": False},
+        ) == ({}, {})
+        assert profile.build_api_kwargs_extras(
+            model=model,
+            reasoning_config={"enabled": True},
+        ) == ({"enable_thinking": True}, {})
     assert profile.build_api_kwargs_extras(
         model="future-model",
         reasoning_config={"enabled": False, "effort": "high"},
@@ -401,10 +407,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_5_3():
+def test_single_manifest_is_version_1_5_4():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.5.3"
+    assert scalars["version"] == "1.5.4"
 
 
 def test_manifest_declares_v2_metadata():

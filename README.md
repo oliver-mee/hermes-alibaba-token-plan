@@ -98,9 +98,9 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 
 Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
-- Personal keys currently resolve to ten chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to nineteen chat models, including `deepseek-v4-pro-0813`.
-- If discovery fails or no key is configured, the Personal providers use the Personal ten as the offline fallback; the Team providers fall back to the Team catalogue.
+- Personal keys currently resolve to eleven chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- Team keys currently resolve to twenty chat models, including `deepseek-v4-pro-0813`.
+- If discovery fails or no key is configured, the Personal providers use the Personal eleven as the offline fallback; the Team providers fall back to the Team catalogue.
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
 (from the Token Plan wiki's measured dataset). `UNLISTED_MODELS` is generated
@@ -126,6 +126,7 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 8. `deepseek-v4-flash-0731`
 9. `deepseek-v4.1-flash`
 10. `glm-5.2`
+11. `glm-5.3`
 
 ### Team chat catalogue
 
@@ -145,9 +146,10 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 14. `kimi-k2.6`
 15. `kimi-k2.5`
 16. `glm-5.2`
-17. `glm-5.1`
-18. `glm-5`
-19. `MiniMax-M2.5`
+17. `glm-5.3`
+18. `glm-5.1`
+19. `glm-5`
+20. `MiniMax-M2.5`
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
@@ -155,8 +157,8 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:
 
-- The fifteen hybrid models receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
-- `MiniMax-M2.5` is always-thinking. The plugin never sends `enable_thinking: false` to it. (Its former companion `qwen3.8-max-preview` retired 2026-08-06; its GA successor `qwen3.8-max` is hybrid and can disable thinking.)
+- The hybrid models (the Team catalogue minus the always-thinking rows below) receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
+- `MiniMax-M2.5` and `glm-5.3` are always-thinking. The plugin never sends `enable_thinking: false` to them (gateway probe 2026-09-18: `glm-5.3` returns 400 `restricted to True` for the toggle, unlike its sibling `glm-5.2`, which can disable). (Its former companion `qwen3.8-max-preview` retired 2026-08-06; its GA successor `qwen3.8-max` is hybrid and can disable thinking.)
 - `qwen3.8-max` effort maps as follows: `minimal` and `low` to `low`, `medium` to `medium`, and `high`, `xhigh` or `max` to `xhigh`.
 - Unknown models receive no provider-specific thinking fields.
 
@@ -170,7 +172,7 @@ The plugin does not force a provider-wide vision flag. Hermes reads per-model me
 - `kimi-k2.6`
 - `kimi-k2.5`
 
-The other ten chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
+The remaining chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
 
 ## Use
 
