@@ -98,9 +98,11 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 
 Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
-- Personal keys currently resolve to eleven chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to twenty chat models, including `deepseek-v4-pro-0813`.
-- If discovery fails or no key is configured, the Personal providers use the Personal eleven as the offline fallback; the Team providers fall back to the Team catalogue.
+<!-- BEGIN GENERATED:tier-summary -->
+- Personal keys currently resolve to 11 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- Team keys currently resolve to 20 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- If discovery fails or no key is configured, the Personal providers use the Personal list of 11 as the offline fallback; the Team providers fall back to the Team list of 20.
+<!-- END GENERATED -->
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
 (from the Token Plan wiki's measured dataset). `UNLISTED_MODELS` is generated
@@ -116,6 +118,7 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 
 ### Personal chat catalogue and offline fallback
 
+<!-- BEGIN GENERATED:personal-catalogue -->
 1. `qwen3.8-max`
 2. `qwen3.8-flash`
 3. `qwen3.7-max`
@@ -127,9 +130,11 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 9. `deepseek-v4.1-flash`
 10. `glm-5.2`
 11. `glm-5.3`
+<!-- END GENERATED -->
 
 ### Team chat catalogue
 
+<!-- BEGIN GENERATED:team-catalogue -->
 1. `qwen3.8-max`
 2. `qwen3.8-flash`
 3. `qwen3.7-max`
@@ -150,6 +155,7 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 18. `glm-5.1`
 19. `glm-5`
 20. `MiniMax-M2.5`
+<!-- END GENERATED -->
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
@@ -213,6 +219,11 @@ HERMES_AGENT_REPO=/path/to/hermes-agent \
 
 bash -n install.sh
 ```
+
+The catalogue counts and numbered model lists in this README are generated
+from `fallback_models.py`: run `python3 scripts/sync-readme.py` after copying
+in a refreshed catalogue, and `tests/test_readme_in_sync.py` fails CI if the
+blocks were forgotten.
 
 Required CI runs standalone profile, catalogue, installer, and PR-policy tests
 on Linux and macOS, plus integration tests against Hermes v0.18.2 and v0.19.0.

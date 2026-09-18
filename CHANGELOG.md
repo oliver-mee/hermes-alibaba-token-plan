@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- README catalogue counts and numbered model lists are now generated from
+  `fallback_models.py` via `scripts/sync-readme.py`. A new test
+  (`tests/test_readme_in_sync.py`) fails CI when the generated blocks drift
+  from the catalogue, so the prose cannot go stale between refreshes.
+
 ## 1.5.4
 
 - Catalogue refresh (generated, from the measured Token Plan dataset): add
