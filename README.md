@@ -17,8 +17,8 @@ provider you select is what selects the account:
 | `alibaba-token-plan-cn` | China, Beijing | Personal | `ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY` |
 | `alibaba-token-plan-cn-team` | China, Beijing | Team | `ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY` |
 
-Global endpoint: `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`.
-China endpoint: `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`.
+Global endpoint: `https://token-plan.maas.qwencloudapi.com/compatible-mode/v1`.
+China endpoint: `https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1`.
 The regions use separate accounts, credentials, consoles, and endpoints. They currently
 expose the same measured chat catalogue. All four use Hermes' OpenAI-compatible Chat
 Completions transport.

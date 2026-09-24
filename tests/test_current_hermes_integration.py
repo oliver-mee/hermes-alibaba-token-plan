@@ -88,8 +88,8 @@ cn_env = (
     "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
     "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
 )
-global_url = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-cn_url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+global_url = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"
+cn_url = "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"
 
 global_profile = get_provider_profile("alibaba-token-plan")
 cn_profile = get_provider_profile("alibaba-token-plan-cn")

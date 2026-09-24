@@ -257,7 +257,7 @@ alibaba_token_plan = QwenTokenPlanProfile(
         "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
-    base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
     # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
@@ -287,7 +287,7 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
         "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
     ),
-    base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
     # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
@@ -326,7 +326,7 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
         "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
-    base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
     # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
@@ -359,7 +359,7 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
         "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
         "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
     ),
-    base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
     # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813

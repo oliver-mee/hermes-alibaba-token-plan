@@ -1,11 +1,23 @@
 # Changelog
 
-## Unreleased
+## 1.5.5
 
 - README catalogue counts and numbered model lists are now generated from
   `fallback_models.py` via `scripts/sync-readme.py`. A new test
   (`tests/test_readme_in_sync.py`) fails CI when the generated blocks drift
   from the catalogue, so the prose cannot go stale between refreshes.
+- Base URL migration: the four provider profiles now default to the
+  vendor-canonical Token Plan hosts `https://token-plan.maas.qwencloudapi.com/
+  compatible-mode/v1` (Global) and `https://token-plan.maas.qianwenaiapi.com/
+  compatible-mode/v1` (China). The 2026-09-23 vendor doc sweep replaced the
+  region-scoped `token-plan.<region>.maas.aliyuncs.com` hosts on both sites'
+  Token Plan pages; the old hosts still serve but are expected to phase out, so
+  pinning the new canonical names keeps OpenClaw-style downstream consumers
+  ahead of the flip. `ALIBABA_TOKEN_PLAN_BASE_URL` /
+  `ALIBABA_TOKEN_PLAN_CN_BASE_URL` env overrides work as before and let anyone
+  pin the old hosts if needed. Verified 2026-09-23/24 with free `GET /models`:
+  the new Global host returns the identical 26-id catalogue.
+- Catalogue unchanged (glm-5.3 is the newest row); no behavioural changes.
 
 ## 1.5.4
 

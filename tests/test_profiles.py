@@ -10,8 +10,8 @@ from conftest import MockProviderProfile
 
 
 REPO = Path(__file__).resolve().parent.parent
-GLOBAL_URL = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-CN_URL = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+GLOBAL_URL = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"
+CN_URL = "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"
 PERSONAL_MODELS = (
     "qwen3.8-max",
     "qwen3.8-flash",
@@ -407,10 +407,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_5_4():
+def test_single_manifest_is_version_1_5_5():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.5.4"
+    assert scalars["version"] == "1.5.5"
 
 
 def test_manifest_declares_v2_metadata():
