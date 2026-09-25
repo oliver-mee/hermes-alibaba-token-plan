@@ -27,8 +27,38 @@ def run_installer(home: Path, *args: str, env: dict[str, str] | None = None):
     )
 
 
+def run_installer_with_default_home(home: Path, *args: str):
+    process_env = os.environ.copy()
+    process_env.pop("HERMES_HOME", None)
+    process_env["HOME"] = str(home)
+    return subprocess.run(
+        [str(INSTALLER), *args],
+        cwd=REPO,
+        env=process_env,
+        text=True,
+        capture_output=True,
+        timeout=15,
+        check=False,
+    )
+
+
 def plugin_root(home: Path) -> Path:
     return home / "plugins" / "model-providers"
+
+
+def test_unset_hermes_home_defaults_to_dot_hermes(tmp_path: Path):
+    fake_home = tmp_path / "user-home"
+    fake_home.mkdir()
+
+    installed = run_installer_with_default_home(fake_home)
+
+    assert installed.returncode == 0, installed.stderr
+    assert (
+        plugin_root(fake_home / ".hermes")
+        / "alibaba-token-plan"
+        / "__init__.py"
+    ).is_file()
+    assert not (fake_home / "plugins").exists()
 
 
 def test_install_upgrade_legacy_migration_verify_and_uninstall(tmp_path: Path):
