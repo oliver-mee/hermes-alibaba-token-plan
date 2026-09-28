@@ -33,32 +33,45 @@ from agent.auxiliary_client import _get_aux_model_for_provider
 from agent.model_metadata import _infer_provider_from_url
 from agent.transports.chat_completions import ChatCompletionsTransport
 from hermes_cli.auth import PROVIDER_REGISTRY, resolve_api_key_provider_credentials
-from hermes_cli.doctor import _build_apikey_providers_list
+try:  # doctor split its connectivity helpers into their own module upstream
+    from hermes_cli.doctor_connectivity import _build_apikey_providers_list
+except ImportError:  # Hermes <= v0.19.0
+    from hermes_cli.doctor import _build_apikey_providers_list
 from hermes_cli.models import CANONICAL_PROVIDERS, provider_model_ids
 from providers import get_provider_profile
 from providers.base import ProviderProfile
 
 personal = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
+    "deepseek-v4-flash-0731",
+    "deepseek-v4.1-flash",
     "glm-5.2",
+    "glm-5.3",
 )
 team = (
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
+    "qwen3.8-flash",
     "qwen3.7-max",
     "qwen3.7-plus",
     "qwen3.6-plus",
     "qwen3.6-flash",
     "deepseek-v4-pro",
+    "deepseek-v4-pro-0813",
     "deepseek-v4-flash",
+    "deepseek-v4-flash-0731",
+    "deepseek-v4.1-flash",
     "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
     "kimi-k2.5",
     "glm-5.2",
+    "glm-5.3",
     "glm-5.1",
     "glm-5",
     "MiniMax-M2.5",
@@ -67,16 +80,28 @@ global_env = (
     "QWEN_TOKEN_PLAN_API_KEY",
     "BAILIAN_TOKEN_PLAN_API_KEY",
     "ALIBABA_TOKEN_PLAN_API_KEY",
+    "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
     "ALIBABA_TOKEN_PLAN_BASE_URL",
 )
-cn_env = ("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_BASE_URL")
-global_url = "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1"
-cn_url = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+cn_env = (
+    "ALIBABA_TOKEN_PLAN_CN_API_KEY",
+    "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
+    "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
+)
+global_url = "https://token-plan.maas.qwencloudapi.com/compatible-mode/v1"
+cn_url = "https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1"
 
 global_profile = get_provider_profile("alibaba-token-plan")
 cn_profile = get_provider_profile("alibaba-token-plan-cn")
-assert global_profile is not None and cn_profile is not None
-assert global_profile.__class__ is cn_profile.__class__
+global_team_profile = get_provider_profile("alibaba-token-plan-team")
+cn_team_profile = get_provider_profile("alibaba-token-plan-cn-team")
+assert (
+    global_profile is not None
+    and cn_profile is not None
+    and global_team_profile is not None
+    and cn_team_profile is not None
+)
+assert global_profile.__class__ is cn_profile.__class__ is global_team_profile.__class__
 assert global_profile.api_mode == cn_profile.api_mode == "chat_completions"
 assert global_profile.base_url == global_url
 assert cn_profile.base_url == cn_url
@@ -84,7 +109,7 @@ assert global_profile.env_vars == global_env
 assert cn_profile.env_vars == cn_env
 assert global_profile.fallback_models == cn_profile.fallback_models == personal
 assert global_profile.default_aux_model == cn_profile.default_aux_model == "qwen3.6-flash"
-assert global_profile.supports_health_check is cn_profile.supports_health_check is False
+assert global_profile.supports_health_check is cn_profile.supports_health_check is True
 assert "DASHSCOPE_API_KEY" not in global_profile.env_vars
 
 for profile in (global_profile, cn_profile):
@@ -98,17 +123,17 @@ assert _infer_provider_from_url(global_url) == "alibaba-token-plan"
 assert _infer_provider_from_url(cn_url) == "alibaba-token-plan-cn"
 
 global_auth = PROVIDER_REGISTRY["alibaba-token-plan"]
-assert global_auth.api_key_env_vars == global_env[:3]
+assert global_auth.api_key_env_vars == global_env[:4]
 assert global_auth.base_url_env_var == global_env[-1]
 cn_auth = PROVIDER_REGISTRY["alibaba-token-plan-cn"]
-assert cn_auth.api_key_env_vars == cn_env[:1]
+assert cn_auth.api_key_env_vars == cn_env[:2]
 assert cn_auth.base_url_env_var == cn_env[-1]
 
 for name in (*global_env, *cn_env, "DASHSCOPE_API_KEY"):
     os.environ.pop(name, None)
 
-for index, name in enumerate(global_env[:3]):
-    for key_name in global_env[:3]:
+for index, name in enumerate(global_env[:4]):
+    for key_name in global_env[:4]:
         os.environ.pop(key_name, None)
     os.environ[name] = f"synthetic-key-{index}"
     creds = resolve_api_key_provider_credentials("alibaba-token-plan")
@@ -133,21 +158,31 @@ try:
         "unknown-preview",
         *reversed(personal),
     ]
-    assert provider_model_ids("alibaba-token-plan") == list(personal)
+    picker = provider_model_ids("alibaba-token-plan")
+    assert set(personal).issubset(picker)
+    assert "wan2.7-image" not in picker
+    assert "unknown-preview" not in picker
+    assert "deepseek-v4-pro-0813" in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: [
         "happyhorse-1.1-t2v",
         *reversed(team),
         "qwen-image-2.0",
     ]
-    # The plugin boundary preserves canonical order. Current Hermes main
-    # prepends fallback_models before merging live-only entries, while 0.18.2
-    # returns the filtered live list directly; both must expose exactly Team.
-    assert global_profile.fetch_models(api_key="synthetic") == list(team)
-    assert set(provider_model_ids("alibaba-token-plan")) == set(team)
+    # The Team provider has the Team fallback and must be tested here; the
+    # Personal provider intentionally uses the smaller Personal catalogue.
+    assert global_team_profile.fetch_models(api_key="synthetic") == list(team)
+    picker = provider_model_ids("alibaba-token-plan-team")
+    assert set(team).issubset(picker)
+    assert "happyhorse-1.1-t2v" not in picker
+    assert "qwen-image-2.0" not in picker
+    assert "deepseek-v4-pro-0813" in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: ["unknown", "wan2.7-image"]
-    assert provider_model_ids("alibaba-token-plan") == list(personal)
+    picker = provider_model_ids("alibaba-token-plan")
+    assert "deepseek-v4-pro-0813" in picker
+    assert "unknown" not in picker
+    assert "wan2.7-image" not in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: None
     assert provider_model_ids("alibaba-token-plan") == list(personal)
@@ -155,8 +190,11 @@ try:
     os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
     os.environ["ALIBABA_TOKEN_PLAN_CN_API_KEY"] = "synthetic-cn-key"
     ProviderProfile.fetch_models = lambda self, **kwargs: list(reversed(team))
-    assert cn_profile.fetch_models(api_key="synthetic") == list(team)
-    assert set(provider_model_ids("alibaba-token-plan-cn")) == set(team)
+    assert cn_team_profile.fetch_models(api_key="synthetic") == list(team)
+    picker = provider_model_ids("alibaba-token-plan-cn-team")
+    assert set(team).issubset(picker)
+    assert "qwen-image-2.0" not in picker
+    assert "deepseek-v4-pro-0813" in picker
 finally:
     ProviderProfile.fetch_models = original_fetch
     os.environ.pop("QWEN_TOKEN_PLAN_API_KEY", None)
@@ -174,7 +212,8 @@ def extra_body(profile, model, config):
     )
     return kwargs.get("extra_body", {})
 
-for model in (model for model in team if model not in {"qwen3.8-max-preview", "MiniMax-M2.5"}):
+always_thinking = {"MiniMax-M2.5", "glm-5.3"}
+for model in (model for model in team if model not in {"qwen3.8-max"} | always_thinking):
     assert extra_body(global_profile, model, None) == {}
     assert extra_body(global_profile, model, {"effort": "high"}) == {}
     assert extra_body(global_profile, model, {"enabled": True}) == {"enable_thinking": True}
@@ -182,24 +221,22 @@ for model in (model for model in team if model not in {"qwen3.8-max-preview", "M
 
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "minimal"},
-) == {"reasoning_effort": "low"}
+    "qwen3.8-max",
+    {"enabled": True, "effort": "minimal"},
+) == {"reasoning_effort": "low", "enable_thinking": True}
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
-    {"enabled": False, "effort": "max"},
-) == {"reasoning_effort": "xhigh"}
+    "qwen3.8-max",
+    {"enabled": True, "effort": "max"},
+) == {"reasoning_effort": "xhigh", "enable_thinking": True}
 assert extra_body(
     global_profile,
-    "qwen3.8-max-preview",
+    "qwen3.8-max",
     {"enabled": False, "effort": "none"},
-) == {}
-assert extra_body(
-    global_profile,
-    "MiniMax-M2.5",
-    {"enabled": False},
-) == {}
+) == {"enable_thinking": False}
+for always_model in ("MiniMax-M2.5", "glm-5.3"):
+    assert extra_body(global_profile, always_model, {"enabled": False}) == {}
+    assert extra_body(global_profile, always_model, {"enabled": True}) == {"enable_thinking": True}
 assert extra_body(
     global_profile,
     "future-model",
@@ -212,7 +249,7 @@ doctor_rows = {
     if row[0] in {global_profile.display_name, cn_profile.display_name}
 }
 assert set(doctor_rows) == {global_profile.display_name, cn_profile.display_name}
-assert all(row[4] is False for row in doctor_rows.values())
+assert all(row[4] is True for row in doctor_rows.values())
 
 print("Hermes Token Plan integration probe: PASS")
 '''

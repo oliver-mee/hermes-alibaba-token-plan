@@ -1,52 +1,92 @@
-"""Qwen Cloud Token Plan providers for Global and China.
+"""Alibaba Token Plan providers for Global and China.
 
-Both regions expose the same measured chat catalogue through separate
-credentials and OpenAI-compatible Chat Completions endpoints. Live ``/models``
-responses are entitlement-aware but may also contain image, video, unknown, or
-temporarily advertised IDs, so discovery intersects them with the canonical
-Team chat allowlist below. If discovery fails, Hermes uses the Personal chat
-catalogue as the conservative offline fallback.
+Both regions expose measured chat catalogues through separate credentials and
+OpenAI-compatible Chat Completions endpoints. Live ``/models`` responses are
+entitlement-aware but may also contain image, video, unknown, or temporarily
+advertised IDs, so discovery intersects them with each provider's tier catalogue.
+Known callable-but-unlisted IDs are retained separately when exact-ID inference
+has been measured.
 """
 
 from __future__ import annotations
 
+import inspect
+import os
 from typing import Any
 
 from providers import register_provider
 from providers.base import ProviderProfile
 
+# `supports_prompt_cache_key` was added to ProviderProfile in a later Hermes than
+# the versions some users run (the compat matrix tests v0.18.2 and v0.19.0,
+# whose ProviderProfile.__init__ predates it). Passing the kwarg unconditionally
+# makes the plugin fail to load on those builds, so only pass it when the host
+# Hermes actually accepts it. The value is always True here; the decision is
+# whether the parameter exists at all.
+_SUPPORTS_PROMPT_CACHE_KEY_KWARG = "supports_prompt_cache_key" in inspect.signature(
+    ProviderProfile.__init__).parameters
+# Spread into each profile's constructor: exact params on new Hermes, nothing on old.
+_PROMPT_CACHE_KEY_ARGS = (
+    {"supports_prompt_cache_key": True} if _SUPPORTS_PROMPT_CACHE_KEY_KWARG else {})
 
-# Generated from the public Token Plan Wiki snapshot at v2026.7.25:
-# https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/v2026.7.25/data/models.json
-# Keep this order: it is the canonical catalogue order used by the picker.
-PERSONAL_MODELS = (
-    "qwen3.8-max-preview",
-    "qwen3.7-max",
-    "qwen3.7-plus",
-    "qwen3.6-flash",
-    "deepseek-v4-pro",
-    "glm-5.2",
+
+# The catalogue ships as fallback_models.py, GENERATED from the Token Plan
+# reference dataset (tools/generate.py in the knowledge-base project; public
+# mirror: https://github.com/oliver-mee/alibaba-token-plan-wiki data/models.json).
+# To update: regenerate upstream, then `cp build/hermes/fallback_models.py` over
+# the sibling file. Never hand-edit the tuples. Tuple order is the canonical
+# catalogue order used by the picker.
+#
+# The relative import is how Hermes' plugin loader executes this package; the
+# path fallback keeps the module importable when a test or tool loads
+# __init__.py directly as a lone file.
+try:
+    from .fallback_models import PERSONAL_MODELS, TEAM_MODELS, UNLISTED_MODELS
+except ImportError:  # loaded without package context
+    import importlib.util as _ilu
+    from pathlib import Path as _Path
+
+    _spec = _ilu.spec_from_file_location(
+        "_token_plan_fallback_models", _Path(__file__).with_name("fallback_models.py"))
+    _fm = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_fm)
+    # UNLISTED_MODELS is newer than PERSONAL/TEAM; default to empty for any
+    # fallback file that predates it so an old copy stays loadable.
+    PERSONAL_MODELS, TEAM_MODELS = _fm.PERSONAL_MODELS, _fm.TEAM_MODELS
+    UNLISTED_MODELS = getattr(_fm, "UNLISTED_MODELS", ())
+
+# Auxiliary-task candidates in preference order, cheapest usable first. These
+# are intersected with the caller's live entitlement, so a tier that cannot
+# reach one falls through to the next. The vision list exists because an aux
+# model is also used for image work: qwen3.6-flash, qwen3.6-plus and
+# qwen3.7-plus are on the measured multimodal set, and qwen3.7-max is NOT,
+# despite the family name.
+_AUX_PREFERENCE = ("qwen3.6-flash", "deepseek-v4-flash-0731", "deepseek-v4-flash")
+_VISION_AUX_PREFERENCE = ("qwen3.6-flash", "qwen3.6-plus", "qwen3.7-plus")
+
+# One collapsed picker row for all four providers instead of four top-level
+# rows, matching how Hermes presents Qwen, Kimi and MiniMax. Hermes folds this
+# via ProviderProfile.group (display only; every slug stays individually
+# addressable via --provider and /model <provider>:<model>). The field landed
+# upstream after this plugin shipped, so it is passed only when the installed
+# Hermes has it — an older Hermes rejects unknown dataclass kwargs and would
+# fail to load the plugin entirely.
+_PICKER_GROUP = (
+    "alibaba-token-plan",
+    "Alibaba Token Plan",
+    "Personal & Team tiers, Global & China",
+)
+_GROUP_KWARGS: dict[str, Any] = (
+    {"group": _PICKER_GROUP}
+    if "group" in getattr(ProviderProfile, "__dataclass_fields__", {})
+    else {}
 )
 
-TEAM_MODELS = (
-    "qwen3.8-max-preview",
-    "qwen3.7-max",
-    "qwen3.7-plus",
-    "qwen3.6-plus",
-    "qwen3.6-flash",
-    "deepseek-v4-pro",
-    "deepseek-v4-flash",
-    "deepseek-v3.2",
-    "kimi-k2.7-code",
-    "kimi-k2.6",
-    "kimi-k2.5",
-    "glm-5.2",
-    "glm-5.1",
-    "glm-5",
-    "MiniMax-M2.5",
-)
-
-_ALWAYS_THINKING_MODELS = {"qwen3.8-max-preview", "minimax-m2.5"}
+# Always-thinking rows: enable_thinking:false returns 400 on the gateway
+# (probed 2026-09-18 for glm-5.3 on the plan gateway; MiniMax guard is older).
+# Sending the toggle only when the user explicitly enables reasoning is safe:
+# the gateway accepts enable_thinking:true on both.
+_ALWAYS_THINKING_MODELS = {"minimax-m2.5", "glm-5.3"}
 _HYBRID_THINKING_MODELS = {model.lower() for model in TEAM_MODELS} - _ALWAYS_THINKING_MODELS
 
 
@@ -65,6 +105,15 @@ class QwenTokenPlanProfile(ProviderProfile):
         ``None`` preserves Hermes' normal fallback behaviour when the request
         fails. A successful response containing no recognised chat IDs returns
         an empty list instead of promoting unknown gateway entries.
+
+        UNLISTED_MODELS are kept even though live discovery never returns them:
+        the gateway answers these ids with HTTP 200 by exact id but
+        deliberately omits them from /models (measured 2026-08-18 and
+        2026-08-31 — deepseek-v4-pro-0813 serves on both tiers while absent
+        from the listing). Dropping them makes selectable, working models
+        vanish from the picker, so they are appended when live discovery
+        succeeds. They are still gated by the per-tier catalogue: a team-only
+        unlisted id never appears on a personal profile.
         """
         live = super().fetch_models(
             api_key=api_key,
@@ -74,7 +123,68 @@ class QwenTokenPlanProfile(ProviderProfile):
         if live is None:
             return None
         live_ids = {str(model).strip().lower() for model in live}
-        return [model for model in TEAM_MODELS if model.lower() in live_ids]
+        catalog = self.fallback_models if self.fallback_models else TEAM_MODELS
+        unlisted_ids = {str(model).strip().lower() for model in UNLISTED_MODELS}
+        return [
+            model for model in catalog
+            if model.lower() in live_ids or model.lower() in unlisted_ids
+        ]
+
+    def _resolve_credentials(self) -> tuple[str | None, str | None]:
+        """Return (api_key, base_url) from this profile's own env vars."""
+        api_key = None
+        base_url = None
+        for name in self.env_vars:
+            value = os.environ.get(name)
+            if not value:
+                continue
+            if name.endswith("_BASE_URL") or name.endswith("_URL"):
+                base_url = base_url or value
+            else:
+                api_key = api_key or value
+        return api_key, base_url or self.base_url
+
+    def resolve_aux_model(self, *, vision: bool = False) -> str:
+        """Return a live cheap model id for auxiliary tasks, or "".
+
+        ``default_aux_model`` is a constant in source, so it rots the moment
+        the plan retires that id: every auxiliary call then spends a round
+        trip 404ing. This catalogue does retire ids (``qwen3.8-max-preview``
+        left ``/models`` on 2026-08-06), so the cheap tier is resolved from
+        the caller's live entitlement instead.
+
+        Per the base contract this must be cheap, must never raise, and
+        returns "" so the caller falls through to ``default_aux_model``. The
+        result is cached for the life of the process because this runs on
+        client-resolution paths. Discovery is a ``GET /models``, which costs
+        no tokens.
+        """
+        cache = getattr(self, "_aux_model_cache", None)
+        if cache is None:
+            cache = {}
+            object.__setattr__(self, "_aux_model_cache", cache)
+        if vision in cache:
+            return cache[vision]
+
+        resolved = ""
+        try:
+            api_key, base_url = self._resolve_credentials()
+            if api_key:
+                live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
+                if live:
+                    entitled = {model.lower() for model in live}
+                    preference = _VISION_AUX_PREFERENCE if vision else _AUX_PREFERENCE
+                    resolved = next(
+                        (model for model in preference if model.lower() in entitled),
+                        "",
+                    )
+        except Exception:
+            # Never raise from a client-resolution path. An empty string is
+            # the documented "no answer" value and keeps default_aux_model.
+            resolved = ""
+
+        cache[vision] = resolved
+        return resolved
 
     def build_api_kwargs_extras(
         self,
@@ -88,7 +198,10 @@ class QwenTokenPlanProfile(ProviderProfile):
         config = reasoning_config if isinstance(reasoning_config, dict) else {}
         body: dict[str, Any] = {}
 
-        if model_name == "qwen3.8-max-preview":
+        # qwen3.8-max (GA) accepts reasoning_effort low/medium/high/xhigh
+        # (gateway acceptance enumerated 2026-08-05). Its retired preview id
+        # carried the same contract while it lived.
+        if model_name == "qwen3.8-max":
             effort = str(config.get("effort") or "").strip().lower()
             mapped_effort = {
                 "minimal": "low",
@@ -124,18 +237,40 @@ alibaba_token_plan = QwenTokenPlanProfile(
         "qwencloud-token-plan",
         "bailian-token-plan",
     ),
-    display_name="Qwen Cloud Token Plan (Global)",
-    description="Qwen Cloud Token Plan Personal and Team, Global/Singapore",
+    display_name="Token Plan Personal",
+    description="Alibaba Token Plan Personal (Global)",
+    **_GROUP_KWARGS,
     signup_url="https://www.qwencloud.com/pricing/token-plan",
     env_vars=(
+        # Credential resolution for a registered provider reads ONLY this tuple
+        # (hermes_cli/auth.py::_resolve_api_key_provider_secret). It never falls
+        # back to providers.<name>.api_key in config.yaml, so a key named only
+        # there goes missing the moment a model is picked by provider id.
+        #
+        # One canonical name per region/tier across the four providers:
+        # ALIBABA_TOKEN_PLAN_{PERSONAL,TEAM,CN_PERSONAL,CN_TEAM}_API_KEY.
+        # The legacy tier-agnostic names stay accepted, first, so existing
+        # installs resolve exactly the key they resolved before this scheme.
         "QWEN_TOKEN_PLAN_API_KEY",
         "BAILIAN_TOKEN_PLAN_API_KEY",
         "ALIBABA_TOKEN_PLAN_API_KEY",
+        "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY",
         "ALIBABA_TOKEN_PLAN_BASE_URL",
     ),
-    base_url="https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1",
+    base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
-    supports_health_check=False,
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
+    supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
@@ -143,16 +278,106 @@ alibaba_token_plan = QwenTokenPlanProfile(
 alibaba_token_plan_cn = QwenTokenPlanProfile(
     name="alibaba-token-plan-cn",
     aliases=("alibaba_token_plan_cn", "aliyun-token-plan-cn", "token-plan-cn"),
-    display_name="Alibaba Cloud Token Plan (China)",
-    description="Alibaba Cloud Token Plan Personal and Team, China/Beijing",
+    display_name="Token Plan Personal (China)",
+    description="Alibaba Token Plan Personal (China)",
+    **_GROUP_KWARGS,
     signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
-    env_vars=("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_BASE_URL"),
-    base_url="https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    env_vars=(
+        "ALIBABA_TOKEN_PLAN_CN_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
+    ),
+    base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
-    supports_health_check=False,
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
+    supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
     default_aux_model="qwen3.6-flash",
     fallback_models=PERSONAL_MODELS,
 )
 
+# Team is a separate registered provider per region rather than a key swap on
+# the Personal profile: the two tiers have different catalogues, the sk-sp-
+# key prefix is identical so the tier cannot be detected at runtime, and one
+# host may serve several Hermes profiles at once. Selecting the provider
+# selects the account.
+alibaba_token_plan_team = QwenTokenPlanProfile(
+    name="alibaba-token-plan-team",
+    aliases=(
+        "alibaba_token_plan_team",
+        "aliyun-token-plan-team",
+        "token-plan-team",
+        "qwen-token-plan-team",
+    ),
+    display_name="Token Plan Team",
+    description="Alibaba Token Plan Team (Global)",
+    **_GROUP_KWARGS,
+    signup_url="https://www.qwencloud.com/pricing/token-plan",
+    env_vars=(
+        "ALIBABA_TOKEN_PLAN_TEAM_API_KEY",
+        "ALIBABA_TOKEN_PLAN_BASE_URL",
+    ),
+    base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
+    auth_type="api_key",
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
+    supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
+    default_aux_model="qwen3.6-flash",
+    fallback_models=TEAM_MODELS,
+)
+
+alibaba_token_plan_cn_team = QwenTokenPlanProfile(
+    name="alibaba-token-plan-cn-team",
+    aliases=(
+        "alibaba_token_plan_cn_team",
+        "aliyun-token-plan-cn-team",
+        "token-plan-cn-team",
+    ),
+    display_name="Token Plan Team (China)",
+    description="Alibaba Token Plan Team (China)",
+    **_GROUP_KWARGS,
+    signup_url="https://www.aliyun.com/benefit/scene/tokenplan",
+    env_vars=(
+        "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",
+        "ALIBABA_TOKEN_PLAN_CN_BASE_URL",
+    ),
+    base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
+    auth_type="api_key",
+    # /models responds on every Token Plan endpoint, so let `hermes doctor`
+    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
+    # answers requests but is absent from the list), which makes the probe a
+    # reachability and credential check rather than a catalogue check.
+    supports_health_check=True,
+    supports_vision=True,
+    # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
+    # against token-plan.ap-southeast-1: HTTP 200, no unknown-field rejection).
+    # Caching itself is implicit prefix matching and works without it, but the
+    # key gives the backend a stable per-session routing hint at zero cost.
+    # Only passed on Hermes builds that accept the kwarg (see module top).
+    **_PROMPT_CACHE_KEY_ARGS,
+    default_aux_model="qwen3.6-flash",
+    fallback_models=TEAM_MODELS,
+)
+
 register_provider(alibaba_token_plan)
+register_provider(alibaba_token_plan_team)
 register_provider(alibaba_token_plan_cn)
+register_provider(alibaba_token_plan_cn_team)

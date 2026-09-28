@@ -4,16 +4,24 @@
 [![Release](https://img.shields.io/github/v/release/oliver-mee/hermes-alibaba-token-plan)](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Cloud and Qwen Cloud Token Plan.
+Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Token Plan (Qwen Cloud is an alternate console view of the same plan, not a separate product).
 
-One installed plugin registers two backward-compatible providers:
+One installed plugin registers four providers, one per region and tier, because the two
+tiers have different catalogues and the `sk-sp-` key prefix is identical for both, so the
+provider you select is what selects the account:
 
-| Provider | Region | Endpoint |
-|---|---|---|
-| `alibaba-token-plan` | Global, Singapore | `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1` |
-| `alibaba-token-plan-cn` | China, Beijing | `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1` |
+| Provider | Region | Tier | Key variable |
+|---|---|---|---|
+| `alibaba-token-plan` | Global, Singapore | Personal | `ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY` |
+| `alibaba-token-plan-team` | Global, Singapore | Team | `ALIBABA_TOKEN_PLAN_TEAM_API_KEY` |
+| `alibaba-token-plan-cn` | China, Beijing | Personal | `ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY` |
+| `alibaba-token-plan-cn-team` | China, Beijing | Team | `ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY` |
 
-The regions use separate accounts, credentials, consoles, and endpoints. They currently expose the same measured chat catalogue. Both use Hermes' OpenAI-compatible Chat Completions transport.
+Global endpoint: `https://token-plan.maas.qwencloudapi.com/compatible-mode/v1`.
+China endpoint: `https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1`.
+The regions use separate accounts, credentials, consoles, and endpoints. They currently
+expose the same measured chat catalogue. All four use Hermes' OpenAI-compatible Chat
+Completions transport.
 
 ## Requirements
 
@@ -44,7 +52,7 @@ The installer copies `alibaba-token-plan/` to:
 ${HERMES_HOME:-~/.hermes}/plugins/model-providers/
 ```
 
-That directory registers both providers. During upgrade, the installer backs up and removes the legacy standalone `alibaba-token-plan-cn/` directory so it cannot register a second China profile and override this one.
+That directory registers all four providers. During upgrade, the installer backs up and removes the legacy standalone `alibaba-token-plan-cn/` directory so it cannot register a second China profile and override this one.
 
 Installed files and previous versions are preserved under `plugins/model-providers/.backups/`.
 
@@ -60,60 +68,94 @@ The installer rejects symlinked plugin and backup destinations.
 
 Token Plan, DashScope pay-as-you-go, and Alibaba Coding Plan use different credentials and billing lanes. This plugin never reads `DASHSCOPE_API_KEY`.
 
-Global credentials are checked in this order:
+One canonical variable per region and tier:
 
 ```bash
-QWEN_TOKEN_PLAN_API_KEY=YOUR_TOKEN_PLAN_KEY
-# BAILIAN_TOKEN_PLAN_API_KEY=YOUR_TOKEN_PLAN_KEY
-# ALIBABA_TOKEN_PLAN_API_KEY=YOUR_TOKEN_PLAN_KEY
-# ALIBABA_TOKEN_PLAN_BASE_URL=https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1
+ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY=YOUR_GLOBAL_PERSONAL_KEY
+ALIBABA_TOKEN_PLAN_TEAM_API_KEY=YOUR_GLOBAL_TEAM_KEY
+ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY=YOUR_CHINA_PERSONAL_KEY
+ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY=YOUR_CHINA_TEAM_KEY
 ```
 
-China uses its existing namespace:
+Set only the ones you hold. Each provider reads exactly its own variable, so one
+subscription's key can never silently bill another's.
+
+Backward-compatible names remain accepted and are checked FIRST on the Personal
+providers, so existing installs resolve exactly the key they resolved before:
 
 ```bash
-ALIBABA_TOKEN_PLAN_CN_API_KEY=YOUR_CHINA_TOKEN_PLAN_KEY
-# ALIBABA_TOKEN_PLAN_CN_BASE_URL=https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+# Global (checked before ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY, in this order)
+# QWEN_TOKEN_PLAN_API_KEY / BAILIAN_TOKEN_PLAN_API_KEY / ALIBABA_TOKEN_PLAN_API_KEY
+# China (checked before ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY)
+# ALIBABA_TOKEN_PLAN_CN_API_KEY
+# Base URL overrides:
+# ALIBABA_TOKEN_PLAN_BASE_URL / ALIBABA_TOKEN_PLAN_CN_BASE_URL
 ```
 
 Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan keys use the `sk-sp-` prefix, but Personal and Team keys share that prefix, so the edition cannot be inferred from the key.
 
 ## Personal and Team discovery
 
-Authenticated `/models` discovery remains enabled. The gateway response is intersected with the measured 15-model Team chat allowlist. This excludes image, video, unknown, and not-yet-verified IDs while retaining the canonical catalogue order.
+Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
-- Personal keys currently resolve to six chat models.
-- Team keys currently resolve to fifteen chat models.
-- If discovery fails or no key is configured, both providers use the Personal six as the conservative offline fallback.
+<!-- BEGIN GENERATED:tier-summary -->
+- Personal keys currently resolve to 11 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- Team keys currently resolve to 20 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- If discovery fails or no key is configured, the Personal providers use the Personal list of 11 as the offline fallback; the Team providers fall back to the Team list of 20.
+<!-- END GENERATED -->
 
-`supports_health_check` is deliberately disabled. A lapsed Token Plan key can still receive HTTP 200 and a full-looking `/models` response while every inference request is denied. Discovery is useful for the picker, but it is not proof that the subscription can call a model.
+The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
+(from the Token Plan wiki's measured dataset). `UNLISTED_MODELS` is generated
+from catalogue rows marked `status: unlisted`; it is reserved for models proven
+callable despite being absent from `/models`. Update it by regenerating upstream
+and copying the file over, never by hand-editing the tuples.
+
+`supports_health_check` is enabled so Hermes can check endpoint reachability, but
+`GET /models` is not proof that every exact-ID model is listed or that a lapsed
+subscription can infer. `deepseek-v4-pro-0813` is the measured exception here:
+it returns HTTP 200 with output on both Team and Personal despite being absent
+from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 
 ### Personal chat catalogue and offline fallback
 
-1. `qwen3.8-max-preview`
-2. `qwen3.7-max`
-3. `qwen3.7-plus`
-4. `qwen3.6-flash`
-5. `deepseek-v4-pro`
-6. `glm-5.2`
+<!-- BEGIN GENERATED:personal-catalogue -->
+1. `qwen3.8-max`
+2. `qwen3.8-flash`
+3. `qwen3.7-max`
+4. `qwen3.7-plus`
+5. `qwen3.6-flash`
+6. `deepseek-v4-pro`
+7. `deepseek-v4-pro-0813`
+8. `deepseek-v4-flash-0731`
+9. `deepseek-v4.1-flash`
+10. `glm-5.2`
+11. `glm-5.3`
+<!-- END GENERATED -->
 
 ### Team chat catalogue
 
-1. `qwen3.8-max-preview`
-2. `qwen3.7-max`
-3. `qwen3.7-plus`
-4. `qwen3.6-plus`
-5. `qwen3.6-flash`
-6. `deepseek-v4-pro`
-7. `deepseek-v4-flash`
-8. `deepseek-v3.2`
-9. `kimi-k2.7-code`
-10. `kimi-k2.6`
-11. `kimi-k2.5`
-12. `glm-5.2`
-13. `glm-5.1`
-14. `glm-5`
-15. `MiniMax-M2.5`
+<!-- BEGIN GENERATED:team-catalogue -->
+1. `qwen3.8-max`
+2. `qwen3.8-flash`
+3. `qwen3.7-max`
+4. `qwen3.7-plus`
+5. `qwen3.6-plus`
+6. `qwen3.6-flash`
+7. `deepseek-v4-pro`
+8. `deepseek-v4-pro-0813`
+9. `deepseek-v4-flash`
+10. `deepseek-v4-flash-0731`
+11. `deepseek-v4.1-flash`
+12. `deepseek-v3.2`
+13. `kimi-k2.7-code`
+14. `kimi-k2.6`
+15. `kimi-k2.5`
+16. `glm-5.2`
+17. `glm-5.3`
+18. `glm-5.1`
+19. `glm-5`
+20. `MiniMax-M2.5`
+<!-- END GENERATED -->
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
 
@@ -121,14 +163,14 @@ Authenticated `/models` discovery remains enabled. The gateway response is inter
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:
 
-- The thirteen hybrid models receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
-- `qwen3.8-max-preview` and `MiniMax-M2.5` are always-thinking models. The plugin never sends `enable_thinking: false` to either.
-- Qwen3.8 effort maps as follows: `minimal` and `low` to `low`, `medium` to `medium`, and `high` or `max` to `xhigh`. `none` is ignored because Qwen3.8 cannot disable thinking.
+- The hybrid models (the Team catalogue minus the always-thinking rows below) receive `enable_thinking` only when Hermes explicitly enables or disables reasoning.
+- `MiniMax-M2.5` and `glm-5.3` are always-thinking. The plugin never sends `enable_thinking: false` to them (gateway probe 2026-09-18: `glm-5.3` returns 400 `restricted to True` for the toggle, unlike its sibling `glm-5.2`, which can disable). (Its former companion `qwen3.8-max-preview` retired 2026-08-06; its GA successor `qwen3.8-max` is hybrid and can disable thinking.)
+- `qwen3.8-max` effort maps as follows: `minimal` and `low` to `low`, `medium` to `medium`, and `high`, `xhigh` or `max` to `xhigh`.
 - Unknown models receive no provider-specific thinking fields.
 
 The plugin does not force a provider-wide vision flag. Hermes reads per-model metadata from models.dev. Seven current chat models accept image and video input:
 
-- `qwen3.8-max-preview`
+- `qwen3.8-max`
 - `qwen3.7-plus`
 - `qwen3.6-plus`
 - `qwen3.6-flash`
@@ -136,20 +178,24 @@ The plugin does not force a provider-wide vision flag. Hermes reads per-model me
 - `kimi-k2.6`
 - `kimi-k2.5`
 
-The other eight chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
+The remaining chat models are text-only. Image and video generation IDs are intentionally excluded from this chat provider's picker.
 
 ## Use
 
 ```bash
 hermes model
-hermes chat --provider alibaba-token-plan --model qwen3.7-plus
-hermes chat --provider alibaba-token-plan-cn --model qwen3.7-plus
+hermes chat --provider alibaba-token-plan --model qwen3.7-plus          # Global, Personal
+hermes chat --provider alibaba-token-plan-team --model qwen3.6-plus     # Global, Team
+hermes chat --provider alibaba-token-plan-cn --model qwen3.7-plus       # China, Personal
+hermes chat --provider alibaba-token-plan-cn-team --model qwen3.6-plus  # China, Team
 ```
 
 Aliases remain available:
 
-- Global: `alibaba_token_plan`, `aliyun-token-plan`, `token-plan`, `qwen-token-plan`, `qwencloud-token-plan`, `bailian-token-plan`
-- China: `alibaba_token_plan_cn`, `aliyun-token-plan-cn`, `token-plan-cn`
+- Global Personal: `alibaba_token_plan`, `aliyun-token-plan`, `token-plan`, `qwen-token-plan`, `qwencloud-token-plan`, `bailian-token-plan`
+- Global Team: `alibaba_token_plan_team`, `aliyun-token-plan-team`, `token-plan-team`, `qwen-token-plan-team`
+- China Personal: `alibaba_token_plan_cn`, `aliyun-token-plan-cn`, `token-plan-cn`
+- China Team: `alibaba_token_plan_cn_team`, `aliyun-token-plan-cn-team`, `token-plan-cn-team`
 
 Token Plan is restricted to interactive use with compatible programming and agent tools. Do not use it as an unattended application backend, batch processor, load test, or shared key pool.
 
@@ -174,6 +220,11 @@ HERMES_AGENT_REPO=/path/to/hermes-agent \
 bash -n install.sh
 ```
 
+The catalogue counts and numbered model lists in this README are generated
+from `fallback_models.py`: run `python3 scripts/sync-readme.py` after copying
+in a refreshed catalogue, and `tests/test_readme_in_sync.py` fails CI if the
+blocks were forgotten.
+
 Required CI runs standalone profile, catalogue, installer, and PR-policy tests
 on Linux and macOS, plus integration tests against Hermes v0.18.2 and v0.19.0.
 A separate weekly advisory workflow tests current Hermes `main`.
@@ -184,7 +235,7 @@ A separate weekly advisory workflow tests current Hermes `main`.
 
 Add per-model Responses API routing for the five Qwen models that support it:
 
-- `qwen3.8-max-preview`
+- `qwen3.8-max`
 - `qwen3.7-max`
 - `qwen3.7-plus`
 - `qwen3.6-plus`
