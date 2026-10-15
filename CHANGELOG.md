@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — native video
+
+- Add an opt-in native Token Plan video backend, safe async lifecycle, installer and offline contract tests.
+- Experimental: live generation and credit deductions have not been verified; see docs/native-video.md.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat

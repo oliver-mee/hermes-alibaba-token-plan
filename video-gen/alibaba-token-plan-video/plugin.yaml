@@ -1,0 +1,9 @@
+name: alibaba-token-plan-video
+version: 0.1.0
+description: "Native Token Plan async video generation (experimental; no live validation)"
+author: Oliver Mee
+kind: backend
+requires_hermes: ">=0.22.0"
+license: MIT
+python_dependencies:
+  - "httpx>=0.28,<0.29"
