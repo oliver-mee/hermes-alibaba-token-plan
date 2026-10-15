@@ -137,3 +137,51 @@ def test_relative_hermes_home_is_normalized(tmp_path: Path):
 
     assert installed.returncode == 0, installed.stderr
     assert (plugin_root(home) / "alibaba-token-plan" / "__init__.py").is_file()
+
+
+def test_asr_additive_install_verify_backup_and_uninstall(tmp_path):
+    home = tmp_path / "home"
+    home.mkdir()
+    config = home / "config.yaml"
+    config.write_text("stt:\n  provider: local\nplugins:\n  enabled: [other-plugin]\n")
+    original = config.read_bytes()
+    assert run_installer(home).returncode == 0
+    target = home / "plugins/alibaba-token-plan-asr"
+    assert (target / "provider.py").is_file()
+    assert not (target / "__pycache__").exists()
+    assert run_installer(home, "--verify").returncode == 0
+    (target / "provider.py").write_text("old")
+    assert run_installer(home, "--verify").returncode != 0
+    assert run_installer(home).returncode == 0
+    assert any(p.read_text() == "old" for p in (home / "plugins/.backups").glob("asr-upgrade.*/plugin/provider.py"))
+    assert run_installer(home, "--uninstall").returncode == 0
+    assert not target.exists()
+    assert list((home / "plugins/.backups").glob("asr-removed.*/plugin/provider.py"))
+    assert config.read_bytes() == original
+
+
+def test_asr_symlink_target_is_rejected(tmp_path):
+    home = tmp_path / "home"
+    (home / "plugins").mkdir(parents=True)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (home / "plugins/alibaba-token-plan-asr").symlink_to(outside)
+    assert run_installer(home).returncode == 2
+    assert not any(outside.iterdir())
+
+
+def test_asr_failed_verify_restores_previous_plugin(tmp_path):
+    home = tmp_path / "home"
+    target = home / "plugins/alibaba-token-plan-asr"
+    target.mkdir(parents=True)
+    (target / "old-marker").write_text("preserved")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_cmp = fake_bin / "cmp"
+    fake_cmp.write_text("#!/bin/sh\nexit 1\n")
+    fake_cmp.chmod(0o755)
+    env = os.environ.copy()
+    env.update(HERMES_HOME=str(home), PATH=f"{fake_bin}:{os.environ['PATH']}")
+    result = subprocess.run(["bash", str(REPO / "install-asr.sh")], env=env, capture_output=True)
+    assert result.returncode != 0
+    assert (target / "old-marker").read_text() == "preserved"

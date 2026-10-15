@@ -383,7 +383,7 @@ def _read_manifest():
     are handled: top-level ``key: value`` scalars and one ``tags:`` block of
     ``  - value`` entries. Comments and blank lines are skipped.
     """
-    manifests = list(REPO.glob("alibaba-token-plan*/plugin.yaml"))
+    manifests = list(REPO.glob("alibaba-token-plan/plugin.yaml"))
     assert manifests == [REPO / "alibaba-token-plan" / "plugin.yaml"]
 
     scalars: dict[str, str] = {}

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Add opt-in native synchronous Global Personal Token Plan ASR, safe local
+  WAV/encoded voice-note handling, native registration/dispatch tests and
+  additive installer recovery. Requires Hermes v0.22.0+; chat compatibility
+  and active defaults are preserved. Streaming remains disabled. Paid/live
+  inference and device delivery acceptance are pending; see NATIVE-ASR.md.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat
