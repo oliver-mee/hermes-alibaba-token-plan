@@ -34,10 +34,8 @@ TEAM_MODELS = (
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-pro-0813",
-    "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
-    "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
     "kimi-k2.5",
@@ -410,7 +408,7 @@ def _read_manifest():
 def test_single_manifest_is_version_1_5_5():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.5.5"
+    assert scalars["version"] == "1.5.6"
 
 
 def test_manifest_declares_v2_metadata():

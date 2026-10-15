@@ -60,7 +60,7 @@ verify_plugin() {
     printf 'error: missing or symlinked installed plugin: %s\n' "$target_dir" >&2
     return 1
   fi
-  for required in __init__.py plugin.yaml; do
+  for required in __init__.py plugin.yaml fallback_models.py; do
     if [[ ! -f "$target_dir/$required" ]]; then
       printf 'error: missing installed file: %s\n' "$target_dir/$required" >&2
       return 1

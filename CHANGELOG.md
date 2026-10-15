@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.6
+
+- Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat
+  discovery and fallback lists. The distinct dated `deepseek-v4-flash-0731`
+  remains available.
+- Distribute generated non-chat entitlement metadata as `MEDIA_MODELS`,
+  including newly listed `wan3.0-video` on Personal and Team in both regions.
+  Generate the README media list from the same data. Media IDs remain outside
+  the chat picker because they require their own generation endpoints.
+- No paid inference checks were run. Video generation, polling and measured
+  Token Plan credit deductions are not implemented or claimed by this refresh.
+
 ## 1.5.5
 
 - README catalogue counts and numbered model lists are now generated from

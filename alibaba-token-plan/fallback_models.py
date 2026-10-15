@@ -31,7 +31,7 @@ PERSONAL_MODELS = (
     "glm-5.3",
 )
 
-# TEAM: 20 chat models
+# TEAM: 18 chat models
 TEAM_MODELS = (
     "qwen3.8-max",
     "qwen3.8-flash",
@@ -41,10 +41,8 @@ TEAM_MODELS = (
     "qwen3.6-flash",
     "deepseek-v4-pro",
     "deepseek-v4-pro-0813",
-    "deepseek-v4-flash",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
-    "deepseek-v3.2",
     "kimi-k2.7-code",
     "kimi-k2.6",
     "kimi-k2.5",
@@ -62,6 +60,21 @@ TEAM_MODELS = (
 # at call time even though live discovery never returns them.
 UNLISTED_MODELS = (
     "deepseek-v4-pro-0813",
+)
+
+# Media entitlement metadata, NOT Chat Completions picker entries.
+MEDIA_MODELS = (
+    ('qwen-audio-3.0-tts-plus', 'tts', ('team', 'personal'), ('global', 'cn')),
+    ('qwen-audio-3.0-realtime-plus', 'realtime', ('team', 'personal'), ('global', 'cn')),
+    ('qwen-audio-3.0-asr-flash', 'asr', ('personal',), ('global',)),
+    ('qwen-image-2.0', 'image', ('team',), ('global', 'cn')),
+    ('qwen-image-2.0-pro', 'image', ('team',), ('global', 'cn')),
+    ('wan2.7-image', 'image', ('team', 'personal'), ('global', 'cn')),
+    ('wan2.7-image-pro', 'image', ('team', 'personal'), ('global', 'cn')),
+    ('happyhorse-1.1-t2v', 'video', ('team', 'personal'), ('global', 'cn')),
+    ('happyhorse-1.1-i2v', 'video', ('team', 'personal'), ('global', 'cn')),
+    ('happyhorse-1.1-r2v', 'video', ('team', 'personal'), ('global', 'cn')),
+    ('wan3.0-video', 'video', ('team', 'personal'), ('global', 'cn')),
 )
 
 DEFAULT_MODEL = "qwen3.7-plus"

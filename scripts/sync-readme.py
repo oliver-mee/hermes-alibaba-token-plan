@@ -50,7 +50,16 @@ def tier_summary(personal, team, unlisted) -> str:
 
 def regions() -> dict[str, str]:
     personal, team, unlisted = load_tuples()
+    spec = importlib.util.spec_from_file_location("_media", FALLBACK)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    media = "\n".join(
+        f"- `{model}` ({kind}; {', '.join(tiers)}; {', '.join(regions)})"
+        for model, kind, tiers, regions in mod.MEDIA_MODELS
+    )
     return {
+        "media-catalogue": media,
         "tier-summary": tier_summary(personal, team, unlisted),
         "personal-catalogue": numbered(personal),
         "team-catalogue": numbered(team),

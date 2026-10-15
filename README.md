@@ -100,8 +100,8 @@ Authenticated `/models` discovery remains enabled. The response is intersected w
 
 <!-- BEGIN GENERATED:tier-summary -->
 - Personal keys currently resolve to 11 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to 20 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- If discovery fails or no key is configured, the Personal providers use the Personal list of 11 as the offline fallback; the Team providers fall back to the Team list of 20.
+- Team keys currently resolve to 18 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- If discovery fails or no key is configured, the Personal providers use the Personal list of 11 as the offline fallback; the Team providers fall back to the Team list of 18.
 <!-- END GENERATED -->
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
@@ -143,21 +143,43 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 6. `qwen3.6-flash`
 7. `deepseek-v4-pro`
 8. `deepseek-v4-pro-0813`
-9. `deepseek-v4-flash`
-10. `deepseek-v4-flash-0731`
-11. `deepseek-v4.1-flash`
-12. `deepseek-v3.2`
-13. `kimi-k2.7-code`
-14. `kimi-k2.6`
-15. `kimi-k2.5`
-16. `glm-5.2`
-17. `glm-5.3`
-18. `glm-5.1`
-19. `glm-5`
-20. `MiniMax-M2.5`
+9. `deepseek-v4-flash-0731`
+10. `deepseek-v4.1-flash`
+11. `kimi-k2.7-code`
+12. `kimi-k2.6`
+13. `kimi-k2.5`
+14. `glm-5.2`
+15. `glm-5.3`
+16. `glm-5.1`
+17. `glm-5`
+18. `MiniMax-M2.5`
 <!-- END GENERATED -->
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
+
+## Media catalogue
+
+The generated `MEDIA_MODELS` metadata in `fallback_models.py` records the plan's
+non-chat models alongside the chat lists. These are not chat-picker entries:
+`wan3.0-video`, for example, uses asynchronous video synthesis, not Chat
+Completions. This provider does not implement media job submission or polling.
+See the [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
+for the per-model endpoints, rates and dated entitlement evidence. Listing
+entitlement does not establish successful inference or a measured credit charge.
+
+<!-- BEGIN GENERATED:media-catalogue -->
+- `qwen-audio-3.0-tts-plus` (tts; team, personal; global, cn)
+- `qwen-audio-3.0-realtime-plus` (realtime; team, personal; global, cn)
+- `qwen-audio-3.0-asr-flash` (asr; personal; global)
+- `qwen-image-2.0` (image; team; global, cn)
+- `qwen-image-2.0-pro` (image; team; global, cn)
+- `wan2.7-image` (image; team, personal; global, cn)
+- `wan2.7-image-pro` (image; team, personal; global, cn)
+- `happyhorse-1.1-t2v` (video; team, personal; global, cn)
+- `happyhorse-1.1-i2v` (video; team, personal; global, cn)
+- `happyhorse-1.1-r2v` (video; team, personal; global, cn)
+- `wan3.0-video` (video; team, personal; global, cn)
+<!-- END GENERATED -->
 
 ## Thinking behaviour
 
