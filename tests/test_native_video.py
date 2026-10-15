@@ -205,7 +205,8 @@ def test_response_bound(video):
 
 def test_data_image_and_local_rejection(video, monkeypatch):
     safety = types.ModuleType("tools.url_safety")
-    safety.is_safe_url = lambda value: "example.com" in value
+    from urllib.parse import urlsplit
+    safety.is_safe_url = lambda value: urlsplit(value).hostname == "example.com"
     monkeypatch.setitem(sys.modules, "tools.url_safety", safety)
     assert video._source("data:image/png;base64,YQ==").startswith("data:")
     assert video._source("https://example.com/image.png").startswith("https:")
