@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add an optional native Token Plan TTS plugin for Hermes v0.22.0+, using
+  DashScope WebSocket whole-file MP3 synthesis and the confirmed `longanlingxin`
+  voice. PCM streaming remains disabled. Install/verify/uninstall is additive;
+  no active provider or configuration is changed. Live checks were NOT RUN.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat
