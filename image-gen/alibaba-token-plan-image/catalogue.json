@@ -1,0 +1,52 @@
+[
+  {
+    "id": "qwen-image-2.0",
+    "tiers": [
+      "team"
+    ],
+    "regions": [
+      "global",
+      "cn"
+    ],
+    "status": "active",
+    "endpoint": "unverified  -  listed on /models but the generation endpoint has not been probed"
+  },
+  {
+    "id": "qwen-image-2.0-pro",
+    "tiers": [
+      "team"
+    ],
+    "regions": [
+      "global",
+      "cn"
+    ],
+    "status": "active",
+    "endpoint": "unverified  -  listed on /models but the generation endpoint has not been probed"
+  },
+  {
+    "id": "wan2.7-image",
+    "tiers": [
+      "team",
+      "personal"
+    ],
+    "regions": [
+      "global",
+      "cn"
+    ],
+    "status": "active",
+    "endpoint": "unverified  -  listed on /models but the generation endpoint has not been probed"
+  },
+  {
+    "id": "wan2.7-image-pro",
+    "tiers": [
+      "team",
+      "personal"
+    ],
+    "regions": [
+      "global",
+      "cn"
+    ],
+    "status": "active",
+    "endpoint": "unverified  -  listed on /models but the generation endpoint has not been probed"
+  }
+]

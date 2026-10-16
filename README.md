@@ -25,7 +25,8 @@ Completions transport.
 
 ## Requirements
 
-- Hermes Agent v0.18.2 through v0.19.0
+- Chat: Hermes Agent v0.18.2 through v0.19.0
+- Optional native image backend: Hermes Agent v0.22.0+
 - Python 3.11 through 3.13
 - Linux or macOS
 
@@ -45,6 +46,9 @@ git checkout <release-tag>
 Choose the latest stable tag from
 [Releases](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases).
 Installing a tagged release is recommended; `main` is the next-release branch.
+
+This feature branch also installs an **opt-in native image backend**. It does
+not enable it or change an active provider. See [native image setup and evidence](docs/native-image.md).
 
 The installer copies `alibaba-token-plan/` to:
 
@@ -162,7 +166,10 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 The generated `MEDIA_MODELS` metadata in `fallback_models.py` records the plan's
 non-chat models alongside the chat lists. These are not chat-picker entries:
 `wan3.0-video`, for example, uses asynchronous video synthesis, not Chat
-Completions. This provider does not implement media job submission or polling.
+Completions. The chat provider does not submit media jobs. The optional
+[native image backend](docs/native-image.md) implements image generation and
+editing through Hermes's existing `image_generate` tool; its Token Plan
+generation routes remain unverified by live inference.
 See the [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 for the per-model endpoints, rates and dated entitlement evidence. Listing
 entitlement does not establish successful inference or a measured credit charge.

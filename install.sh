@@ -1,159 +1,123 @@
 #!/usr/bin/env bash
-# Install, verify, or uninstall the consolidated Alibaba Token Plan plugin.
+# Install chat and the opt-in native image backend, without enabling either.
 set -euo pipefail
 
 HERMES_HOME="${HERMES_HOME:-${HOME:?Set HERMES_HOME or HOME}/.hermes}"
-if [[ "$HERMES_HOME" != /* ]]; then
-  HERMES_HOME="$PWD/$HERMES_HOME"
-fi
-DEST="$HERMES_HOME/plugins/model-providers"
+if [[ "$HERMES_HOME" != /* ]]; then HERMES_HOME="$PWD/$HERMES_HOME"; fi
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PLUGIN_NAME="alibaba-token-plan"
-LEGACY_NAME="alibaba-token-plan-cn"
-
 case "${1:-install}" in
   install) ACTION=install ;;
   --verify) ACTION=verify ;;
   --uninstall) ACTION=uninstall ;;
   -h|--help)
     printf '%s\n' \
-      "Usage: HERMES_HOME=/path ./install.sh [install|--verify|--uninstall]" \
-      "  install     Install or upgrade the consolidated provider plugin." \
-      "  --verify    Verify installed files and legacy-profile migration." \
-      "  --uninstall Move installed provider directories to recovery backups."
-    exit 0
-    ;;
-  *)
-    printf 'error: unknown action: %s\n' "$1" >&2
-    exit 2
-    ;;
+      'Usage: HERMES_HOME=/path ./install.sh [install|--verify|--uninstall]' \
+      'Installs chat and native image files. Does not enable plugins or change defaults.' \
+      '--verify compares installed files; --uninstall preserves recovery backups.'
+    exit 0 ;;
+  *) printf 'error: unknown action: %s\n' "$1" >&2; exit 2 ;;
 esac
-
-if [[ -z "$HERMES_HOME" || "$HERMES_HOME" == "/" || "$DEST" == "/plugins/model-providers" ]]; then
-  printf 'error: refusing unsafe HERMES_HOME destination\n' >&2
-  exit 2
+if [[ "$HERMES_HOME" == / ]]; then
+  printf 'error: refusing unsafe HERMES_HOME destination\n' >&2; exit 2
 fi
 
-if [[ -L "$HERMES_HOME/plugins" || -L "$DEST" ]]; then
-  printf 'error: refusing symlinked Hermes plugin destination\n' >&2
-  exit 2
-fi
+names=(alibaba-token-plan alibaba-token-plan-image alibaba-token-plan-cn)
+sources=("$SRC/alibaba-token-plan" "$SRC/image-gen/alibaba-token-plan-image")
+roots=("$HERMES_HOME/plugins/model-providers" "$HERMES_HOME/plugins/image_gen" "$HERMES_HOME/plugins/model-providers")
+files=( '__init__.py plugin.yaml fallback_models.py' '__init__.py plugin.yaml catalogue.json media.py LICENSE' )
+targets=() backups=() stages=() changed=()
+stamp="$(date -u +%Y%m%dT%H%M%SZ)-$$"
 
-source_dir="$SRC/$PLUGIN_NAME"
-if [[ -L "$source_dir" || ! -d "$source_dir" || ! -f "$source_dir/__init__.py" || ! -f "$source_dir/plugin.yaml" ]]; then
-  printf 'error: source plugin is incomplete: %s\n' "$source_dir" >&2
-  exit 1
-fi
-
-backup_root="$DEST/.backups"
-backup_stamp="$(date -u +%Y%m%dT%H%M%SZ)-$$"
-target_dir="$DEST/$PLUGIN_NAME"
-legacy_dir="$DEST/$LEGACY_NAME"
-
-if [[ -L "$backup_root" ]]; then
-  printf 'error: refusing symlinked plugin backup destination\n' >&2
-  exit 2
-fi
-
-verify_plugin() {
-  if [[ -L "$target_dir" || ! -d "$target_dir" ]]; then
-    printf 'error: missing or symlinked installed plugin: %s\n' "$target_dir" >&2
-    return 1
-  fi
-  for required in __init__.py plugin.yaml fallback_models.py; do
-    if [[ ! -f "$target_dir/$required" ]]; then
-      printf 'error: missing installed file: %s\n' "$target_dir/$required" >&2
-      return 1
+reject_symlinks() {
+  local path="$1"
+  while [[ "$path" != / && "$path" != . ]]; do
+    if [[ -L "$path" ]]; then
+      printf 'error: refusing symlinked plugin path: %s\n' "$path" >&2; exit 2
     fi
-    if ! cmp -s "$source_dir/$required" "$target_dir/$required"; then
-      printf 'error: installed file differs from source: %s\n' "$target_dir/$required" >&2
-      return 1
+    path="$(dirname "$path")"
+  done
+}
+for i in 0 1 2; do
+  targets[i]="${roots[i]}/${names[i]}"
+  backups[i]=""
+  stages[i]="${roots[i]}/.${names[i]}.install-$stamp"
+  changed[i]=false
+  reject_symlinks "${targets[i]}"
+  reject_symlinks "${roots[i]}/.backups"
+  if [[ -e "${roots[i]}/.backups" && ! -d "${roots[i]}/.backups" ]]; then
+    printf 'error: plugin backup root must be a directory\n' >&2; exit 2
+  fi
+done
+for i in 0 1; do
+  reject_symlinks "${sources[i]}"
+  for file in ${files[i]}; do
+    if [[ ! -f "${sources[i]}/$file" || -L "${sources[i]}/$file" ]]; then
+      printf 'error: source plugin is incomplete\n' >&2; exit 1
     fi
   done
-  if [[ -e "$legacy_dir" || -L "$legacy_dir" ]]; then
-    printf 'error: legacy standalone plugin still installed: %s\n' "$legacy_dir" >&2
-    return 1
-  fi
-}
+done
 
+verify_component() {
+  local i="$1" file
+  if [[ ! -d "${targets[i]}" || -L "${targets[i]}" ]]; then return 1; fi
+  for file in ${files[i]}; do
+    if [[ -L "${targets[i]}/$file" || ! -f "${targets[i]}/$file" ]] || \
+       ! cmp -s "${sources[i]}/$file" "${targets[i]}/$file"; then
+      printf 'error: missing or changed installed file: %s\n' "$file" >&2; return 1
+    fi
+  done
+}
 if [[ "$ACTION" == verify ]]; then
-  verify_plugin
-  printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"
+  verify_component 0
+  verify_component 1
+  if [[ -e "${targets[2]}" ]]; then
+    printf 'error: legacy standalone plugin still installed\n' >&2; exit 1
+  fi
+  printf 'Verified chat and native image plugin files.\n'
   exit 0
 fi
 
-mkdir -p "$DEST"
-
-if [[ "$ACTION" == uninstall ]]; then
-  mkdir -p "$backup_root"
-  for dir in "$target_dir" "$legacy_dir"; do
-    if [[ -e "$dir" || -L "$dir" ]]; then
-      name="${dir##*/}"
-      recovery_dir="$backup_root/${name}.${backup_stamp}"
-      mv "$dir" "$recovery_dir"
-      printf 'Removed %s (recovery copy: %s)\n' "$dir" "$recovery_dir"
-    else
-      printf 'Already absent: %s\n' "$dir"
+# The transaction covers both components and legacy migration. On failure restore
+# only paths already moved; keep failed/staged copies for manual recovery.
+committed=false
+rollback() {
+  local status=$? i
+  if [[ "$committed" == true ]]; then return; fi
+  trap - EXIT
+  for i in 2 1 0; do
+    if [[ "${changed[i]}" == true && -e "${targets[i]}" ]]; then
+      mv "${targets[i]}" "${roots[i]}/.backups/${names[i]}.failed-$stamp" || status=1
+    fi
+    if [[ -n "${backups[i]}" && -e "${backups[i]}" ]]; then
+      mv "${backups[i]}" "${targets[i]}" || status=1
+    fi
+    if [[ -e "${stages[i]}" ]]; then
+      mv "${stages[i]}" "${roots[i]}/.backups/${names[i]}.staging-$stamp" || status=1
     fi
   done
-  exit 0
-fi
-
-staging_dir="$DEST/.${PLUGIN_NAME}.install-${backup_stamp}"
-main_backup=""
-legacy_backup=""
-
-if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
-  printf 'error: staging destination already exists: %s\n' "$staging_dir" >&2
-  exit 1
-fi
-cp -a "$source_dir" "$staging_dir"
-
-rollback_install() {
-  mkdir -p "$backup_root"
-  if [[ -e "$target_dir" || -L "$target_dir" ]]; then
-    mv "$target_dir" "$backup_root/${PLUGIN_NAME}.failed-${backup_stamp}" || true
-  fi
-  if [[ -e "$staging_dir" || -L "$staging_dir" ]]; then
-    mv "$staging_dir" "$backup_root/${PLUGIN_NAME}.staging-${backup_stamp}" || true
-  fi
-  if [[ -n "$main_backup" && -e "$main_backup" ]]; then
-    mv "$main_backup" "$target_dir" || true
-  fi
-  if [[ -n "$legacy_backup" && -e "$legacy_backup" ]]; then
-    mv "$legacy_backup" "$legacy_dir" || true
-  fi
+  exit "$status"
 }
-
-if [[ -e "$target_dir" || -L "$target_dir" ]]; then
-  mkdir -p "$backup_root"
-  main_backup="$backup_root/${PLUGIN_NAME}.${backup_stamp}"
-  if ! mv "$target_dir" "$main_backup"; then
-    rollback_install
-    exit 1
+trap rollback EXIT
+for i in 0 1 2; do mkdir -p "${roots[i]}/.backups"; done
+if [[ "$ACTION" == install ]]; then
+  for i in 0 1; do
+    if [[ -e "${stages[i]}" || -L "${stages[i]}" ]]; then exit 1; fi
+    mkdir "${stages[i]}"
+    # Copy distributable files only, never local Python caches or test evidence.
+    for file in ${files[i]}; do cp "${sources[i]}/$file" "${stages[i]}/$file"; done
+  done
+fi
+for i in 0 1 2; do
+  if [[ -e "${targets[i]}" ]]; then
+    recovery="${roots[i]}/.backups/${names[i]}.$stamp"
+    mv "${targets[i]}" "$recovery"
+    backups[i]="$recovery"
   fi
-fi
-
-if [[ -e "$legacy_dir" || -L "$legacy_dir" ]]; then
-  mkdir -p "$backup_root"
-  legacy_backup="$backup_root/${LEGACY_NAME}.${backup_stamp}"
-  if ! mv "$legacy_dir" "$legacy_backup"; then
-    rollback_install
-    exit 1
+  if [[ "$ACTION" == install && "$i" != 2 ]]; then
+    mv "${stages[i]}" "${targets[i]}"
+    changed[i]=true
+    verify_component "$i"
   fi
-fi
-
-if ! mv "$staging_dir" "$target_dir" || ! verify_plugin; then
-  rollback_install
-  exit 1
-fi
-
-if [[ -n "$main_backup" ]]; then
-  printf 'Upgraded %s (previous copy: %s)\n' "$target_dir" "$main_backup"
-else
-  printf 'Installed %s\n' "$target_dir"
-fi
-if [[ -n "$legacy_backup" ]]; then
-  printf 'Migrated legacy profile %s (recovery copy: %s)\n' "$legacy_dir" "$legacy_backup"
-fi
-printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"
+done
+committed=true
+printf '%s\n' 'Completed chat and native image file transaction; previous copies remain in .backups/.'
