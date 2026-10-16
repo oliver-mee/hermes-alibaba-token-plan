@@ -41,11 +41,19 @@ def _https_url(url):
 
 def _download(url, cap):
     from tools.url_safety import create_ssrf_safe_client
-    _https_url(url)
     deadline = time.monotonic() + MEDIA_SECONDS
+    _https_url(url)
     # Guarded Hermes transport validates DNS at connect; redirects are never followed.
-    with create_ssrf_safe_client(timeout=30, follow_redirects=False, trust_env=False) as client:
+    def check():
+        from tools.interrupt import is_interrupted
+        if is_interrupted():
+            raise ValueError("Image download interrupted")
+        if time.monotonic() >= deadline:
+            raise ValueError("Image download exceeded its time limit")
+    check()
+    with create_ssrf_safe_client(timeout=min(30, deadline - time.monotonic()), follow_redirects=False, trust_env=False) as client:
         with client.stream("GET", url) as response:
+            check()
             if response.status_code != 200:
                 raise ValueError("Image download failed or redirected")
             mime = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
@@ -55,12 +63,12 @@ def _download(url, cap):
             if length is not None and (not length.isdigit() or int(length) > cap):
                 raise ValueError("Image download exceeds the plugin's byte cap")
             raw = bytearray()
-            for chunk in response.iter_bytes(chunk_size=65536):
-                if time.monotonic() > deadline:
-                    raise ValueError("Image download exceeded its time limit")
+            for chunk in response.iter_bytes():
+                check()
                 if len(raw) + len(chunk) > cap:
                     raise ValueError("Image download exceeds the plugin's byte cap")
                 raw.extend(chunk)
+            check()
     if image_type(raw) != mime:
         raise ValueError("Image signature does not match content type")
     return bytes(raw), mime
@@ -100,6 +108,10 @@ def source_image(source):
         if not stat.S_ISREG(info.st_mode) or not 0 < info.st_size <= MAX_SOURCE:
             raise ValueError("Source must be a non-empty regular image of at most 10 MiB")
         raw = stream.read(MAX_SOURCE + 1)
+        after = os.fstat(stream.fileno())
+        if (len(raw) != info.st_size or after.st_size != info.st_size
+                or after.st_mtime_ns != info.st_mtime_ns):
+            raise ValueError("Source image changed while reading; use a finished image")
     if len(raw) > MAX_SOURCE:
         raise ValueError("Source exceeds the plugin's byte cap")
     return raw, image_type(raw)

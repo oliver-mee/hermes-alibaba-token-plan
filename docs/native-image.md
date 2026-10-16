@@ -139,7 +139,9 @@ No third-party hosting service is used.
 Image transfers require public HTTPS resolution, TLS, a known image MIME type
 and matching signature. Hermes's SSRF-safe transport checks connections;
 redirects and proxy environment routing are disabled. Transfers are capped by
-bytes and a 60-second iteration deadline (30-second socket timeout). Credentials
+bytes and a 60-second iteration deadline (30-second socket timeout). Download
+checks run on each received chunk and at EOF, and observe Hermes interruption.
+Local source files that change during the read are rejected. Credentials
 are sent only to the fixed regional Token Plan host, never to an artifact host.
 Generated files use exclusive random names and mode 0600 under the active
 profile's `$HERMES_HOME/cache/generated/images/`, resolved separately on every

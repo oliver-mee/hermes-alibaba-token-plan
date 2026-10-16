@@ -94,6 +94,8 @@ def _request(host, key, method, path, payload=None, *, asynchronous=False, timeo
             if getattr(conn, "sock", None) is not None:
                 conn.sock.settimeout(remaining)
             chunk = getattr(response, "read1", response.read)(min(65536, MAX_RESPONSE + 1 - count))
+            if time.monotonic() >= deadline:
+                raise ImageError("Gateway response exceeded its time limit", "timeout")
             if not chunk:
                 break
             chunks.append(chunk)
@@ -299,6 +301,10 @@ class TokenPlanImageProvider(ImageGenProvider):
                     if remaining <= 0:
                         raise ImageError("Image job exceeded the plugin's five-minute wait", "timeout")
                     data = _request(self.host, key, "GET", f"/api/v1/tasks/{task_id}", timeout=min(30, remaining))
+                    if is_interrupted():
+                        raise ImageError("Image wait interrupted; remote task may continue", "interrupted")
+                    if time.monotonic() >= deadline:
+                        raise ImageError("Image job exceeded the plugin's five-minute wait", "timeout")
                     output = data.get("output", {})
                     if not isinstance(output, dict):
                         raise ImageError("Invalid task response", "invalid_response")
@@ -314,6 +320,8 @@ class TokenPlanImageProvider(ImageGenProvider):
                     time.sleep(min(2 + attempt, 10, remaining))
                 else:
                     raise ImageError("Image job reached the plugin's polling limit", "timeout")
+            if is_interrupted():
+                raise ImageError("Image generation interrupted; request may have completed", "interrupted")
             image_url = _image_url(data)
             try:
                 path = cache_image(image_url, self.name)

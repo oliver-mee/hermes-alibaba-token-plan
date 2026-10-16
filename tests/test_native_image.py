@@ -313,7 +313,8 @@ def test_remote_and_cache_bounds(image, monkeypatch, tmp_path):
             assert method == "GET"
             return Response()
     def safe_client(**kwargs):
-        assert kwargs == {"timeout": 30, "follow_redirects": False, "trust_env": False}
+        assert 0 < kwargs.pop("timeout") <= 30
+        assert kwargs == {"follow_redirects": False, "trust_env": False}
         return Client()
     safety.create_ssrf_safe_client = safe_client
     monkeypatch.setitem(sys.modules, "tools.url_safety", safety)
@@ -384,3 +385,94 @@ def test_cache_symlink_is_rejected_before_network(image, monkeypatch, tmp_path):
     with pytest.raises(ValueError, match="symlinked"):
         media.cache_image(URL, "synthetic")
     assert not list(outside.iterdir())
+
+
+@pytest.mark.parametrize("failure", ["trickle", "late_eof", "interrupt"])
+def test_download_observes_deadline_and_interrupt(image, monkeypatch, failure):
+    media = sys.modules["_native_image.media"]
+    clock, stopped, closed = [0.0], [], []
+    monkeypatch.setattr(media.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(media, "_https_url", lambda url: None)
+    monkeypatch.setattr(sys.modules["tools.interrupt"], "is_interrupted", lambda: bool(stopped))
+    class Response:
+        status_code, headers = 200, {"content-type": "image/png"}
+        def __enter__(self): return self
+        def __exit__(self, *args): closed.append(True)
+        def iter_bytes(self, chunk_size=None):
+            if failure == "late_eof":
+                yield PNG
+                clock[0] = 61
+                return
+            if chunk_size is not None:
+                pytest.fail("Buffered iteration hides cancellation and trickled bytes")
+            clock[0] = 61 if failure == "trickle" else 1
+            if failure == "interrupt": stopped.append(True)
+            yield PNG
+    class Client:
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+        def stream(self, *args): return Response()
+    safety = types.ModuleType("tools.url_safety")
+    safety.create_ssrf_safe_client = lambda **kw: Client()
+    monkeypatch.setitem(sys.modules, "tools.url_safety", safety)
+    with pytest.raises(ValueError, match="interrupted|time limit"):
+        media._download(URL, 1024)
+    assert closed
+
+
+@pytest.mark.parametrize("stop", [False, True])
+def test_late_poll_success_never_downloads(image, wire, monkeypatch, stop):
+    clock, stopped = [0.0], []
+    monkeypatch.setattr(image.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(sys.modules["tools.interrupt"], "is_interrupted", lambda: bool(stopped))
+    calls, replies = wire
+    replies.extend([{"output": {"task_id": "job-1"}}, success()])
+    request = image._request
+    def late(*args, **kw):
+        data = request(*args, **kw)
+        if args[2] == "GET":
+            clock[0] = 301
+            if stop: stopped.append(True)
+        return data
+    monkeypatch.setattr(image, "_request", late)
+    monkeypatch.setattr(image, "cache_image", lambda *a: pytest.fail("Late image downloaded"))
+    result = provider(image).generate("cloud")
+    assert result["error_type"] == ("interrupted" if stop else "timeout")
+    assert result["task_id"] == "job-1" and not result["retry_safe"]
+    assert [c[2] for c in calls] == ["POST", "GET"]
+
+
+def test_changing_source_is_rejected(image, monkeypatch, tmp_path):
+    media = sys.modules["_native_image.media"]
+    source = tmp_path / "source.png"
+    source.write_bytes(PNG)
+    fstat, count = media.os.fstat, [0]
+    def changed(fd):
+        info = fstat(fd)
+        count[0] += 1
+        if count[0] == 2:
+            return types.SimpleNamespace(st_size=info.st_size + 1, st_mtime_ns=info.st_mtime_ns)
+        return info
+    monkeypatch.setattr(media.os, "fstat", changed)
+    with pytest.raises(ValueError, match="changed while reading"):
+        media.source_image(str(source))
+
+
+@pytest.mark.parametrize("eof", [False, True])
+def test_json_read_crossing_deadline_is_not_accepted(image, monkeypatch, eof):
+    clock, calls, closed = [0.0], [], []
+    monkeypatch.setattr(image.time, "monotonic", lambda: clock[0])
+    class Response:
+        status = 200
+        def read(self, cap):
+            clock[0] = 121
+            return b"" if eof else json.dumps(success()).encode()
+    class Connection:
+        def __init__(self, *a, **kw): pass
+        def request(self, *a, **kw): calls.append(a[0])
+        def getresponse(self): return Response()
+        def close(self): closed.append(True)
+    monkeypatch.setattr(image.http.client, "HTTPSConnection", Connection)
+    result = provider(image, "alibaba-token-plan-team").generate("cloud", model="qwen-image-2.0")
+    assert result["error_type"] == "timeout" and not result["retry_safe"]
+    assert calls == ["POST"] and closed

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Enforce image transfer deadlines and interruption at chunk/EOF boundaries; reject late task success and changing local source files.
+
 - Add an opt-in native `ImageGenProvider` backend for four Token Plan region/tier
   profiles, preserving chat and active defaults. Support eligible Qwen Image 2.0
   and Wan 2.7 exact IDs, editing/reference inputs, bounded async Wan jobs and
