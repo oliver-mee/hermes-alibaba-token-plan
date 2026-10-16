@@ -17,6 +17,7 @@ def asr(monkeypatch):
     modules = {
         "agent": types.ModuleType("agent"),
         "agent.secret_scope": types.SimpleNamespace(get_secret=lambda key: "synthetic"),
+        "agent.file_safety": types.SimpleNamespace(get_read_block_error=lambda path: None),
         "agent.transcription_provider": types.SimpleNamespace(TranscriptionProvider=type("Base", (), {
             "default_model": lambda self: self.list_models()[0]["id"]})),
         "tools": types.ModuleType("tools"),
@@ -177,3 +178,151 @@ def test_old_host_registration_does_not_import_native_api(caplog):
     spec.loader.exec_module(module)
     module.register(object())
     assert "requires Hermes >=0.22.0" in caplog.text
+
+
+@pytest.fixture(autouse=True)
+def forbid_network(monkeypatch):
+    import socket
+    def deny(*args, **kwargs):
+        pytest.fail("Network forbidden in offline ASR tests")
+    monkeypatch.setattr(socket.socket, "connect", deny)
+    monkeypatch.setattr(socket, "create_connection", deny)
+
+
+def test_native_metadata_and_availability_are_offline(asr, monkeypatch):
+    provider = asr.TokenPlanASR()
+    assert provider.display_name == provider.get_setup_schema()["name"]
+    assert provider.default_model() == "qwen-audio-3.0-asr-flash"
+    assert [row["id"] for row in provider.list_models()] == [provider.default_model()]
+    assert provider.is_available()
+    monkeypatch.setattr(asr, "get_secret", lambda key: (_ for _ in ()).throw(RuntimeError("private")))
+    assert not provider.is_available()
+
+
+def test_missing_key_does_not_read_or_decode(asr, monkeypatch):
+    monkeypatch.setattr(asr, "get_secret", lambda key: None)
+    monkeypatch.setattr(asr, "normalise", lambda path: pytest.fail("Must resolve key before reading audio"))
+    result = asr.TokenPlanASR().transcribe("missing")
+    assert result["error_kind"] == "credential"
+
+
+@pytest.mark.parametrize("data", [wav()[:100], wav(181)])
+def test_invalid_pcm_never_enters_repair_decoder(asr, tmp_path, monkeypatch, data):
+    path = tmp_path / "recording.wav"
+    path.write_bytes(data)
+    monkeypatch.setattr(asr, "_find_ffmpeg_binary", lambda: pytest.fail("Must reject damaged/long PCM"))
+    assert asr.TokenPlanASR().transcribe(path)["error_kind"] == "invalid_request"
+
+
+@pytest.mark.parametrize("failure", ["probe", "decode", "cancel", "duration", "truncated"])
+def test_conversion_cleanup_and_bounds(asr, audio, tmp_path, monkeypatch, failure):
+    import subprocess
+    audio.write_bytes(wav(rate=8000))
+    monkeypatch.setattr(asr, "_find_ffmpeg_binary", lambda: "ffmpeg")
+    monkeypatch.setattr(asr, "_find_ffprobe_binary", lambda: "ffprobe")
+    monkeypatch.setattr(asr.tempfile, "tempdir", str(tmp_path))
+    calls = []
+    def run(command, **options):
+        calls.append(command)
+        assert options["stdin"] == subprocess.DEVNULL
+        assert command[command.index("-protocol_whitelist") + 1] == "file"
+        assert command[command.index("-format_whitelist") + 1] == asr.DEMUXERS
+        assert "concat" not in asr.DEMUXERS and "hls" not in asr.DEMUXERS
+        if command[0] == "ffprobe":
+            assert options["timeout"] == 15
+            if failure == "probe":
+                raise subprocess.TimeoutExpired(command, 15)
+            return types.SimpleNamespace(stdout=b'{"format":{"duration":"1"}}')
+        assert options["timeout"] == 30 and "-xerror" in command
+        assert command[command.index("-t") + 1] == "181"
+        assert command[command.index("-fs") + 1] == str(asr.MAX_WAV)
+        if failure == "cancel":
+            raise KeyboardInterrupt()
+        if failure == "decode":
+            raise subprocess.CalledProcessError(1, command, stderr=b"private-path")
+        Path(command[-1]).write_bytes(wav(181) if failure == "duration" else wav()[:100])
+    monkeypatch.setattr(asr.subprocess, "run", run)
+    monkeypatch.setattr(asr, "post", lambda *args: pytest.fail("Must not upload"))
+    original = audio.read_bytes()
+    if failure == "cancel":
+        with pytest.raises(KeyboardInterrupt):
+            asr.TokenPlanASR().transcribe(audio)
+    else:
+        result = asr.TokenPlanASR().transcribe(audio)
+        assert not result["success"] and "private" not in result["error"]
+        assert result["error_kind"] == ("timeout" if failure == "probe" else "invalid_request")
+    assert audio.read_bytes() == original
+    assert not list(tmp_path.glob("token-plan-asr-*"))
+
+
+@pytest.mark.parametrize("failure,kind", [(TimeoutError, "timeout"), (ConnectionError, "network"),
+                                         (KeyboardInterrupt, None)])
+def test_transport_interruption_closes_without_retry(asr, audio, monkeypatch, failure, kind):
+    calls = []
+    class Connection:
+        def __init__(self, *a, **kw): pass
+        def request(self, *a, **kw): calls.append("request")
+        def getresponse(self): raise failure("private-path-or-key")
+        def close(self): calls.append("close")
+    monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
+    if kind is None:
+        with pytest.raises(KeyboardInterrupt):
+            asr.TokenPlanASR().transcribe(audio)
+    else:
+        result = asr.TokenPlanASR().transcribe(audio)
+        assert result["error_kind"] == kind
+        assert "completion unknown" in result["error"]
+        assert "private" not in result["error"]
+    assert calls == ["request", "close"]
+    assert audio.exists()
+
+
+@pytest.mark.parametrize("status,kind", [(401, "credential"), (403, "entitlement"), (429, "quota"), (503, "upstream")])
+def test_status_errors_do_not_read_private_bodies(asr, audio, monkeypatch, status, kind):
+    class Connection:
+        def __init__(self, *a, **kw): pass
+        def request(self, *a, **kw): pass
+        def getresponse(self):
+            return types.SimpleNamespace(status=status, read=lambda limit: pytest.fail("Do not read error bodies"))
+        def close(self): pass
+    monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
+    result = asr.TokenPlanASR().transcribe(audio)
+    assert result["error_kind"] == kind
+    assert not result["success"]
+
+
+@pytest.mark.parametrize("raw", [b'[]', b'null', b'{"error":{"message":"private"}}', b'{', b'\xff'])
+def test_response_error_categories(asr, audio, monkeypatch, raw):
+    class Connection:
+        def __init__(self, *a, **kw): pass
+        def request(self, *a, **kw): pass
+        def getresponse(self): return types.SimpleNamespace(status=200, read=lambda limit: raw)
+        def close(self): pass
+    monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
+    result = asr.TokenPlanASR().transcribe(audio)
+    assert result["error_kind"] in {"response", "upstream"}
+    assert not result["success"] and "private" not in result["error"]
+
+
+def test_core_file_safety_precedes_open(asr, audio, monkeypatch):
+    monkeypatch.setattr(asr, "get_read_block_error", lambda path: "Access denied: private-path")
+    monkeypatch.setattr(asr.os, "open", lambda *a: pytest.fail("Protected file must not be opened"))
+    result = asr.TokenPlanASR().transcribe(audio)
+    assert result["error_kind"] == "invalid_request"
+    assert "Core file safety" in result["error"] and "private" not in result["error"]
+
+
+def test_changed_input_snapshot_is_rejected(asr, audio, monkeypatch):
+    original_stat = asr.os.fstat
+    count = 0
+    def fstat(fd):
+        nonlocal count
+        info = original_stat(fd)
+        count += 1
+        if count == 1:
+            return info
+        return types.SimpleNamespace(st_size=info.st_size + 1, st_mtime_ns=info.st_mtime_ns)
+    monkeypatch.setattr(asr.os, "fstat", fstat)
+    monkeypatch.setattr(asr, "post", lambda *a: pytest.fail("Changed recording must not upload"))
+    result = asr.TokenPlanASR().transcribe(audio)
+    assert not result["success"] and "changed while reading" in result["error"]

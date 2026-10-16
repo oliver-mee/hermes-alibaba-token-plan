@@ -148,8 +148,13 @@ def test_asr_additive_install_verify_backup_and_uninstall(tmp_path):
     assert run_installer(home).returncode == 0
     target = home / "plugins/alibaba-token-plan-asr"
     assert (target / "provider.py").is_file()
+    for name in ("LICENSE", "THIRD-PARTY-NOTICES-ASR.txt"):
+        assert (target / name).read_bytes() == (REPO / name).read_bytes()
     assert not (target / "__pycache__").exists()
     assert run_installer(home, "--verify").returncode == 0
+    (target / "THIRD-PARTY-NOTICES-ASR.txt").unlink()
+    assert run_installer(home, "--verify").returncode != 0
+    assert run_installer(home).returncode == 0
     (target / "provider.py").write_text("old")
     assert run_installer(home, "--verify").returncode != 0
     assert run_installer(home).returncode == 0

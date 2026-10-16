@@ -17,7 +17,7 @@ def test_native_asr_registration_and_dispatch(tmp_path):
     plugins = home / "plugins"
     shutil.copytree(ROOT / "alibaba-token-plan-asr", plugins / "alibaba-token-plan-asr")
     shutil.copytree(ROOT / "alibaba-token-plan", plugins / "model-providers/alibaba-token-plan")
-    (home / "config.yaml").write_text('plugins:\n  enabled: [alibaba-token-plan-asr]\nstt:\n  enabled: true\n  provider: alibaba-token-plan-asr\n  alibaba-token-plan-asr:\n    language: auto\n')
+    (home / "config.yaml").write_text('plugins:\n  enabled: [alibaba-token-plan-asr]\nstt:\n  enabled: true\n  provider: alibaba-token-plan-asr\n  language: en\n  alibaba-token-plan-asr:\n    language: auto\n')
     # Do not inherit operator credentials, dotenv locations, hooks or profile settings.
     env = {key: os.environ[key] for key in ("PATH", "LANG", "SYSTEMROOT") if key in os.environ}
     env.update(HOME=str(home), HERMES_HOME=str(home), PYTHONPATH=str(Path(HERMES).resolve()),
@@ -84,6 +84,40 @@ if shutil.which('ffmpeg') and shutil.which('ffprobe'):
 else:
     print('Ogg conversion: NOT RUN (ffmpeg/ffprobe absent)')
 assert calls[0]['model'] == 'qwen-audio-3.0-asr-flash'
+# Host hooks must not silently lose unsupported hints or send unsupported fields.
+before = len(calls)
+with patch.object(http.client, 'HTTPSConnection', Connection), patch.object(socket, 'create_connection', deny_network):
+    with patch.object(transcription_tools, '_apply_pre_transcription_hook', return_value=(None, 'zh-HK', 'names')):
+        hinted = transcription_tools.transcribe_audio(str(path))
+    assert not hinted['success'] and hinted['error_kind'] == 'invalid_request', hinted
+    assert len(calls) == before
+    with patch.object(transcription_tools, '_apply_pre_transcription_hook', return_value=('other-model', 'auto', None)):
+        invalid_model = transcription_tools.transcribe_audio(str(path))
+    assert not invalid_model['success'] and len(calls) == before
+    # One failed request must not poison the next native dispatch.
+    with patch.object(Response, 'status', 429):
+        quota = transcription_tools.transcribe_audio(str(path))
+    assert not quota['success'] and quota['error_kind'] == 'quota', quota
+    recovered = transcription_tools.transcribe_audio(str(path))
+    assert recovered['success'], recovered
+assert len(calls) == before + 2
+# Real core guard refuses a synthetic protected file before decoding/upload.
+protected = Path.home() / '.env'
+protected.write_bytes(path.read_bytes())
+with patch.object(http.client, 'HTTPSConnection', Connection), patch.object(socket, 'create_connection', deny_network):
+    refused = provider.transcribe(str(protected))
+assert not refused['success'] and 'Core file safety' in refused['error'], refused
+assert len(calls) == before + 2
+assert protected.read_bytes() == path.read_bytes()
+# The file-only protocol whitelist alone is insufficient: concat can read other
+# local files. Exercise the demuxer restriction with the real installed decoder.
+if shutil.which('ffmpeg') and shutil.which('ffprobe'):
+    playlist = path.with_name('playlist.wav')
+    playlist.write_text("ffconcat version 1.0\nfile '" + str(path) + "'\n")
+    with patch.object(http.client, 'HTTPSConnection', Connection), patch.object(socket, 'create_connection', deny_network):
+        refused = provider.transcribe(str(playlist))
+    assert not refused['success'] and refused['error_kind'] == 'invalid_request', refused
+    assert len(calls) == before + 2 and playlist.exists() and path.exists()
 from tools.transcription_streaming import streaming_available, open_streaming_session
 stream_config = {'provider': provider.name, 'streaming': True,
                  provider.name: {'language': 'auto'}}

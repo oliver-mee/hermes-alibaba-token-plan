@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Harden native ASR input snapshots and decoder isolation, reject damaged PCM
+  before conversion, add actionable safe error categories and native display
+  metadata, and ship reference licence notices. Expand offline interruption,
+  hint-hook, quota recovery and installer coverage; streaming remains disabled.
+
 - Add opt-in native synchronous Global Personal Token Plan ASR, safe local
   WAV/encoded voice-note handling, native registration/dispatch tests and
   additive installer recovery. Requires Hermes v0.22.0+; chat compatibility

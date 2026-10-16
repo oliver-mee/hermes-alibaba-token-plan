@@ -18,6 +18,9 @@ verify() {
   for file in __init__.py provider.py plugin.yaml; do
     [[ -f "$target/$file" && ! -L "$target/$file" ]] && cmp -s "$src/$file" "$target/$file" || return 1
   done
+  for file in LICENSE THIRD-PARTY-NOTICES-ASR.txt; do
+    [[ -f "$target/$file" && ! -L "$target/$file" ]] && cmp -s "$src/../$file" "$target/$file" || return 1
+  done
 }
 case "${1:-install}" in
   --verify) verify; exit ;;
@@ -38,6 +41,9 @@ trap 'rm -rf "$stage"' EXIT
 mkdir "$stage/plugin"
 for file in __init__.py provider.py plugin.yaml; do
   cp "$src/$file" "$stage/plugin/$file"
+done
+for file in LICENSE THIRD-PARTY-NOTICES-ASR.txt; do
+  cp "$src/../$file" "$stage/plugin/$file"
 done
 recovery=""
 if [[ -e "$target" ]]; then
