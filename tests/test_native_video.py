@@ -32,11 +32,15 @@ def video(monkeypatch):
         monkeypatch.setitem(sys.modules, "agent", agent)
         monkeypatch.setitem(sys.modules, "agent.video_gen_provider", abc)
         monkeypatch.setitem(sys.modules, "agent.secret_scope", secrets)
+        interrupt = types.ModuleType("tools.interrupt")
+        interrupt.is_interrupted = lambda: False
+        monkeypatch.setitem(sys.modules, "tools.interrupt", interrupt)
     spec = importlib.util.spec_from_file_location("_native_video", ROOT / "video-gen/alibaba-token-plan-video/__init__.py", submodule_search_locations=[str(ROOT / "video-gen/alibaba-token-plan-video")])
     mod = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, spec.name, mod)
     spec.loader.exec_module(mod)
     monkeypatch.setattr(mod, "_config", lambda: {})
+    monkeypatch.setattr(mod, "is_interrupted", lambda: False)
     if os.environ.get("HERMES_NATIVE_TEST") == "1":
         from hermes_cli import config
         monkeypatch.setattr(config, "load_config", lambda: {})
@@ -143,7 +147,7 @@ def test_ambiguous_submission_never_retried(video, wire, reply):
 def test_terminal_failures(video, wire, state):
     wire[1][1] = {"output": {"task_status": state, "message": "synthetic-secret"}}
     result = video.TokenPlanVideoProvider().generate("A cloud")
-    assert result["error_type"] == "job_failed"
+    assert result["error_type"] == ("cancelled" if state in ("CANCELED", "CANCELLED") else "job_failed")
     assert result["task_id"] == "task-123"
     assert "synthetic-secret" not in json.dumps(result)
     assert sum(c[0] == "POST" for c in wire[0]) == 1
@@ -156,7 +160,8 @@ def test_pending_running_success(video, wire):
 
 
 def test_poll_timeout(video, wire, monkeypatch):
-    monkeypatch.setattr(video, "POLL_DEADLINE", 0)
+    clock = iter([0, 601])
+    monkeypatch.setattr(video.time, "monotonic", lambda: next(clock))
     result = video.TokenPlanVideoProvider().generate("A cloud")
     assert result["error_type"] == "timeout"
     assert result["task_id"] == "task-123"
@@ -193,6 +198,7 @@ def test_http_errors_redacted(video, status, kind):
     with client, pytest.raises(video.RequestFailure) as caught:
         video._json_request(client, "POST", "https://example.com/api")
     assert caught.value.kind == kind
+    assert caught.value.retryable == (status in (429, 500))
     assert "synthetic-secret" not in str(caught.value)
 
 
@@ -239,7 +245,7 @@ def test_model_precedence_and_capabilities(video, monkeypatch):
     monkeypatch.setattr(video, "_config", lambda: {"model": "happyhorse-1.1-i2v"})
     provider = video.TokenPlanVideoProvider()
     assert provider.default_model() == "wan3.0-video"
-    assert provider.capabilities()["resolutions"] == ["480p"]
+    assert provider.capabilities()["resolutions"] == ["480p", "720p"]
     assert provider.capabilities()["max_reference_images"] == 0
     monkeypatch.setattr(config, "load_config", lambda: {})
     assert provider.default_model() == "happyhorse-1.1-i2v"
@@ -283,3 +289,195 @@ def test_api_error_body_redacted(video):
         with pytest.raises(video.RequestFailure) as caught:
             video._json_request(client, "POST", "https://example.com/api")
     assert "synthetic-secret" not in str(caught.value)
+
+
+@pytest.mark.parametrize("when", ["before", "submitted", "polled"])
+def test_native_stop_never_resubmits_or_downloads(video, wire, monkeypatch, when):
+    stopped = lambda: when == "before" or len(wire[0]) >= (1 if when == "submitted" else 2)
+    monkeypatch.setattr(video, "is_interrupted", stopped)
+    monkeypatch.setattr(video, "save_url_video", lambda *a, **kw: pytest.fail("Stopped task downloaded"))
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert result["error_type"] == "cancelled"
+    assert len(wire[0]) == {"before": 0, "submitted": 1, "polled": 2}[when]
+    if when != "before":
+        assert result["task_id"] == "task-123"
+        assert result["resubmit_safe"] is False
+
+
+def test_stop_during_backoff(video, wire, monkeypatch):
+    wire[1][1] = {"output": {"task_status": "RUNNING"}}
+    stopped = []
+    monkeypatch.setattr(video, "is_interrupted", lambda: bool(stopped))
+    monkeypatch.setattr(video.time, "sleep", lambda seconds: stopped.append(seconds))
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert result["error_type"] == "cancelled"
+    assert stopped == [0.25]
+    assert len(wire[0]) == 2
+
+
+def test_poll_retry_budget_exhausted(video, wire):
+    import httpx
+    wire[1][1:] = [httpx.ReadTimeout("synthetic-secret")] * 3
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert result["error_type"] == "poll_failed"
+    assert result["task_id"] == "task-123"
+    assert result["resubmit_safe"] is False
+    assert [c[0] for c in wire[0]] == ["POST", "GET", "GET", "GET"]
+    assert "synthetic-secret" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("value", [0, -1, 601, True, "30", float("nan"), float("inf")])
+def test_invalid_poll_timeout_before_credentials(video, wire, monkeypatch, value):
+    monkeypatch.setattr(video, "_config", lambda: {"poll_timeout": value})
+    monkeypatch.setattr(video, "get_secret_str", lambda *a: pytest.fail("Invalid settings read secrets"))
+    assert video.TokenPlanVideoProvider().generate("A cloud")["error_type"] == "invalid_request"
+    assert not wire[0]
+
+
+def test_short_poll_timeout_keeps_task_for_recovery(video, wire, monkeypatch):
+    monkeypatch.setattr(video, "_config", lambda: {"poll_timeout": 1})
+    clock = iter([10, 12])
+    monkeypatch.setattr(video.time, "monotonic", lambda: next(clock))
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert result["error_type"] == "timeout"
+    assert result["task_id"] == "task-123"
+    assert len(wire[0]) == 1
+
+
+def test_picker_metadata_is_complete_and_independent(video):
+    provider = video.TokenPlanVideoProvider()
+    rows = provider.list_models()
+    assert all(row["min_duration"] == row["max_duration"] == 5 for row in rows)
+    assert all("live validation pending" in row["strengths"] for row in rows)
+    assert rows[-1]["resolutions"] == ["480p", "720p"]
+    rows[0]["modalities"].append("video")
+    rows[-1]["resolutions"].append("1080p")
+    assert provider.list_models()[0]["modalities"] == ["text"]
+    assert provider.list_models()[-1]["resolutions"] == ["480p", "720p"]
+
+
+def test_generated_catalogue_is_current():
+    target = ROOT / "video-gen/alibaba-token-plan-video/catalogue.py"
+    before = target.read_bytes()
+    runpy.run_path(str(ROOT / "scripts/sync-video-catalogue.py"))
+    assert target.read_bytes() == before
+
+
+@pytest.mark.parametrize("model,resolution,refs", [
+    ("happyhorse-1.1-t2v", ["720p"], 0),
+    ("happyhorse-1.1-i2v", ["720p"], 0),
+    ("happyhorse-1.1-r2v", ["720p"], 9),
+    ("wan3.0-video", ["480p", "720p"], 0),
+])
+def test_native_dynamic_schema(video, monkeypatch, model, resolution, refs):
+    if os.environ.get("HERMES_NATIVE_TEST") != "1":
+        pytest.skip("Real Hermes schema runs in dedicated integration subprocess")
+    from tools import video_generation_tool as tool
+    from hermes_cli import config
+    monkeypatch.setattr(config, "load_config", lambda: {"video_gen": {"model": model}})
+    monkeypatch.setattr(tool, "_read_configured_video_model", lambda: model)
+    monkeypatch.setattr(tool, "_resolve_active_provider", lambda: video.TokenPlanVideoProvider())
+    schema = tool._build_dynamic_video_schema()
+    props = schema["parameters"]["properties"]
+    assert props["resolution"]["enum"] == resolution
+    assert props["duration"]["minimum"] == props["duration"]["maximum"] == 5
+    assert props.get("reference_image_urls", {}).get("maxItems", 0) == refs
+    assert not {"audio", "seed", "upscale", "negative_prompt", "model"}.intersection(props)
+
+
+def test_real_hermes_interrupt_signal(video, wire, monkeypatch):
+    if os.environ.get("HERMES_NATIVE_TEST") != "1":
+        pytest.skip("Real Hermes interrupt runs in dedicated integration subprocess")
+    from tools.interrupt import is_interrupted, set_interrupt
+    monkeypatch.setattr(video, "is_interrupted", is_interrupted)
+    set_interrupt(True)
+    try:
+        assert video.TokenPlanVideoProvider().generate("A cloud")["error_type"] == "cancelled"
+        assert not wire[0]
+        assert is_interrupted(), "Provider must not clear the host's stop signal"
+    finally:
+        set_interrupt(False)
+
+
+@pytest.mark.parametrize("status", [401, 403, 429, 500, 502, 503, 504])
+def test_http_poll_recovers_and_closes_client(video, monkeypatch, status):
+    import httpx
+    real_client = httpx.Client
+    calls, clients = [], []
+    def transport(request):
+        calls.append(request)
+        if request.method == "POST":
+            return httpx.Response(200, json={"output": {"task_id": "task-123"}})
+        if len(calls) == 2:
+            return httpx.Response(status, text="synthetic-secret")
+        return httpx.Response(200, json={"output": {"task_status": "SUCCEEDED", "video_url": "https://example.com/a.mp4"}})
+    def client(**kw):
+        instance = real_client(transport=httpx.MockTransport(transport), **kw)
+        clients.append(instance)
+        return instance
+    monkeypatch.setattr(httpx, "Client", client)
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert result["success"] == (status not in (401, 403))
+    assert [r.method for r in calls] == (["POST", "GET"] if status in (401, 403) else ["POST", "GET", "GET"])
+    assert len({r.headers["Authorization"] for r in calls}) == 1
+    assert clients[0].is_closed
+
+
+@pytest.mark.parametrize("resolution", [None, "480p"])
+def test_native_wan_prompt_only_dispatch(video, wire, monkeypatch, resolution):
+    if os.environ.get("HERMES_NATIVE_TEST") != "1":
+        pytest.skip("Real Hermes dispatch runs in dedicated integration subprocess")
+    from tools import video_generation_tool as tool
+    provider = video.TokenPlanVideoProvider()
+    monkeypatch.setattr(tool, "_resolve_active_provider", lambda: provider)
+    monkeypatch.setattr(tool, "_read_configured_video_model", lambda: "wan3.0-video")
+    args = {"prompt": "A cloud"}
+    if resolution:
+        args["resolution"] = resolution
+    result = json.loads(tool._handle_video_generate(args))
+    assert result["success"]
+    assert wire[0][0][2]["json"]["parameters"]["resolution"] == (resolution or "720p").upper()
+
+
+@pytest.mark.parametrize("stop", [False, True])
+def test_stream_deadline_and_stop_close_response(video, monkeypatch, stop):
+    import httpx
+    clock = [0.0]
+    stopped, closed = [], []
+    monkeypatch.setattr(video.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(video, "is_interrupted", lambda: bool(stopped))
+    class SlowStream(httpx.SyncByteStream):
+        def __iter__(self):
+            for chunk in (b'{', b'"output":', b'{}}'):
+                clock[0] += 0.4
+                if stop and clock[0] > 0.5:
+                    stopped.append(True)
+                yield chunk
+        def close(self):
+            closed.append(True)
+    def reply(request):
+        assert request.extensions["timeout"]["read"] <= 1.0
+        return httpx.Response(200, stream=SlowStream())
+    with httpx.Client(transport=httpx.MockTransport(reply)) as client:
+        with pytest.raises(video.RequestFailure) as caught:
+            video._json_request(client, "GET", "https://example.com/api", deadline=1.0)
+    assert caught.value.kind == ("cancelled" if stop else "timeout")
+    assert closed
+
+
+def test_late_success_keeps_task_without_downloading(video, wire, monkeypatch):
+    clock = [0.0]
+    monkeypatch.setattr(video.time, "monotonic", lambda: clock[0])
+    request = video._json_request
+    def late(*args, **kwargs):
+        result = request(*args, **kwargs)
+        if args[1] == "GET":
+            clock[0] = 601
+        return result
+    monkeypatch.setattr(video, "_json_request", late)
+    monkeypatch.setattr(video, "save_url_video", lambda *a, **kw: pytest.fail("Late task downloaded"))
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert result["error_type"] == "timeout"
+    assert result["task_id"] == "task-123"
+    assert result["resubmit_safe"] is False
+    assert [c[0] for c in wire[0]] == ["POST", "GET"]

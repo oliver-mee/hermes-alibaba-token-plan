@@ -6,11 +6,13 @@ Only the dated, documented request subset is enabled. Never retry submission.
 from __future__ import annotations
 
 import base64
+from copy import deepcopy
 import re
 import time
 from urllib.parse import urlsplit
 
 from agent.secret_scope import get_secret_str
+from tools.interrupt import is_interrupted
 from agent.video_gen_provider import (
     VideoGenProvider, error_response, success_response, save_url_video,
 )
@@ -27,6 +29,15 @@ PROFILES = {
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_VIDEO_BYTES = 200 * 1024 * 1024
 POLL_DEADLINE = 600.0
+MAX_POLL_FAILURES = 3
+
+
+def _wait(seconds):
+    """Keep Hermes /stop responsive during backoff, without clearing its signal."""
+    while seconds > 0 and not is_interrupted():
+        step = min(seconds, 0.25)
+        time.sleep(step)
+        seconds -= step
 
 
 def _config():
@@ -58,18 +69,38 @@ def _source(value):
     return value
 
 
-def _json_request(client, method, url, **kwargs):
+def _check_poll(deadline):
+    if is_interrupted():
+        raise RequestFailure("cancelled", "Stopped waiting; vendor task may still run and bill. Do not resubmit.")
+    if time.monotonic() >= deadline:
+        raise RequestFailure("timeout", "Polling deadline reached; task may still be running. Do not resubmit.")
+
+
+def _json_request(client, method, url, *, deadline=None, **kwargs):
     # Streaming bounds even error/JSON responses. No redirects carrying credentials.
+    if deadline is not None:
+        _check_poll(deadline)
+        # Limit each blocking read as well as total elapsed time between chunks.
+        kwargs["timeout"] = min(30.0, max(0.001, deadline - time.monotonic()))
     with client.stream(method, url, **kwargs) as response:
+        if deadline is not None:
+            _check_poll(deadline)
         if response.status_code != 200:
             code = response.status_code
             kind = "credentials_or_entitlement" if code in (401, 403) else "quota" if code == 429 else "api_error"
-            raise RequestFailure(kind, f"Video endpoint returned HTTP {code}")
+            raise RequestFailure(kind, f"Video endpoint returned HTTP {code}",
+                                 retryable=code in (429, 500, 502, 503, 504))
         data = bytearray()
-        for chunk in response.iter_bytes(chunk_size=64 * 1024):
+        # Do not buffer 64 KiB before yielding: even tiny trickled chunks must
+        # pass the wall-clock/stop checks, including compressed response streams.
+        for chunk in response.iter_bytes():
+            if deadline is not None:
+                _check_poll(deadline)
             data.extend(chunk)
             if len(data) > 1024 * 1024:
                 raise RequestFailure("invalid_response", "Video endpoint response exceeded 1 MiB")
+    if deadline is not None:
+        _check_poll(deadline)
     import json
     parsed = json.loads(data)
     if not isinstance(parsed, dict):
@@ -81,8 +112,9 @@ def _json_request(client, method, url, **kwargs):
 
 
 class RequestFailure(Exception):
-    def __init__(self, kind, message):
+    def __init__(self, kind, message, *, retryable=False):
         self.kind = kind
+        self.retryable = retryable
         super().__init__(message)
 
 
@@ -112,7 +144,8 @@ class TokenPlanVideoProvider(VideoGenProvider):
             return False
 
     def list_models(self):
-        return [dict(row) for row in VIDEO_MODELS]
+        # Pickers must not be able to mutate our generated nested metadata.
+        return deepcopy(list(VIDEO_MODELS))
 
     def default_model(self):
         from hermes_cli.config import load_config
@@ -121,10 +154,11 @@ class TokenPlanVideoProvider(VideoGenProvider):
 
     def capabilities(self):
         model = self.default_model()
+        entry = next((row for row in VIDEO_MODELS if row["id"] == model), None)
         refs = model == "happyhorse-1.1-r2v"
         return {
-            "modalities": ["image"] if model in ("happyhorse-1.1-i2v", "happyhorse-1.1-r2v") else ["text"],
-            "aspect_ratios": ["16:9"], "resolutions": ["480p"] if model == "wan3.0-video" else ["720p"],
+            "modalities": list(entry["modalities"]) if entry else ["text"],
+            "aspect_ratios": ["16:9"], "resolutions": list(entry["resolutions"]) if entry else [],
             "min_duration": 5, "max_duration": 5,
             "supports_audio": False, "supports_seed": False,
             "supports_negative_prompt": False, "supports_upscale": False,
@@ -132,8 +166,9 @@ class TokenPlanVideoProvider(VideoGenProvider):
         }
 
     def get_setup_schema(self):
-        _, _, env = self._settings()
-        return {"name": self.display_name, "badge": "paid", "tag": "Select region/tier explicitly; live validation pending",
+        cfg, _, env = self._settings()
+        profile = cfg.get("profile", "global-personal")
+        return {"name": self.display_name, "badge": "paid", "tag": f"{profile}; five-second experimental subset; set video_gen.alibaba-token-plan.profile before key setup; live validation pending",
                 "env_vars": [{"key": env, "prompt": "Token Plan key for the selected profile",
                               "url": "https://www.qwencloud.com/"}]}
 
@@ -156,9 +191,12 @@ class TokenPlanVideoProvider(VideoGenProvider):
 
         try:
             cfg, base, env = self._settings()
+            poll_timeout = cfg.get("poll_timeout", POLL_DEADLINE)
+            if type(poll_timeout) not in (int, float) or not 1 <= poll_timeout <= POLL_DEADLINE:
+                raise ValueError("poll_timeout must be 1–600 seconds; stopping polling does not cancel vendor billing")
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 4000:
                 raise ValueError("Prompt must contain 1–4000 characters")
-            if model_id not in {row["id"] for row in VIDEO_MODELS}:
+            if not isinstance(model_id, str) or model_id not in {row["id"] for row in VIDEO_MODELS}:
                 raise ValueError("Unknown video model; select an exact catalogue ID")
             if duration is not None and (type(duration) is not int or duration != 5):
                 raise ValueError("Only the documented five-second request subset is enabled")
@@ -166,13 +204,14 @@ class TokenPlanVideoProvider(VideoGenProvider):
                 raise ValueError("Only 16:9 is enabled in this initial subset")
             if negative_prompt is not None or audio is not None or seed is not None or kwargs.get("upscale"):
                 raise ValueError("Negative prompt, audio control, seed and upscale are not enabled")
-            refs = reference_image_urls or []
+            refs = [] if reference_image_urls is None else reference_image_urls
             if not isinstance(refs, list) or len(refs) > 9 or (image_url and refs):
                 raise ValueError("Use one first frame or up to nine references, never both")
             is_wan = model_id == "wan3.0-video"
-            wanted_resolution = "480p" if is_wan else "720p"
-            if resolution.lower() != wanted_resolution:
-                raise ValueError(f"Select {wanted_resolution} for this documented model subset")
+            allowed_resolutions = ("480p", "720p") if is_wan else ("720p",)
+            wanted_resolution = resolution.lower()
+            if wanted_resolution not in allowed_resolutions:
+                raise ValueError("Select " + " or ".join(allowed_resolutions) + " for this documented model subset")
             inputs = {"prompt": prompt.strip()}
             params = {"duration": 5, "resolution": wanted_resolution.upper()}
             if is_wan:
@@ -201,6 +240,8 @@ class TokenPlanVideoProvider(VideoGenProvider):
             return fail("Invalid video configuration or parameter type; see docs/native-video.md", "invalid_request")
 
         import httpx
+        if is_interrupted():
+            return fail("Video generation stopped before submission; no task created.", "cancelled")
         # httpx defaults to zero transport retries. Never retry a paid POST, even on timeout.
         with httpx.Client(timeout=30, follow_redirects=False) as client:
             headers = {"Authorization": f"Bearer {key}", "X-DashScope-Async": "enable"}
@@ -220,28 +261,48 @@ class TokenPlanVideoProvider(VideoGenProvider):
                 result["resubmit_safe"] = False
                 return result
 
-            deadline = time.monotonic() + POLL_DEADLINE
+            deadline = time.monotonic() + poll_timeout
             interval = 2.0
+            failures = 0
             try:
                 while True:
+                    if is_interrupted():
+                        return fail("Stopped waiting; vendor task may still run and bill. Inspect the task console; do not resubmit.", "cancelled")
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         return fail("Polling deadline reached; task may still be running. Do not resubmit.", "timeout")
-                    polled = _json_request(client, "GET", base + "/api/v1/tasks/" + task_id,
-                                           headers={"Authorization": f"Bearer {key}"}, timeout=min(30, remaining))
+                    try:
+                        polled = _json_request(client, "GET", base + "/api/v1/tasks/" + task_id,
+                                               headers={"Authorization": f"Bearer {key}"}, deadline=deadline, timeout=min(30, remaining))
+                    except (RequestFailure, httpx.TransportError) as exc:
+                        # Retry only idempotent task reads, never a paid submission.
+                        if isinstance(exc, RequestFailure) and not exc.retryable:
+                            raise
+                        failures += 1
+                        if failures >= MAX_POLL_FAILURES:
+                            raise
+                        _wait(min(interval, max(0, deadline - time.monotonic())))
+                        interval = min(interval * 1.5, 10)
+                        continue
+                    _check_poll(deadline)
+                    failures = 0
                     output = polled.get("output", {})
                     status = output.get("task_status")
                     if status == "SUCCEEDED":
                         break
+                    if status in ("CANCELED", "CANCELLED"):
+                        return fail("Video task was cancelled by the provider; inspect the task console.", "cancelled")
                     if status not in ("PENDING", "RUNNING"):
                         return fail("Video task ended without success; inspect task status in the console", "job_failed")
-                    time.sleep(min(interval, max(0, deadline - time.monotonic())))
+                    _wait(min(interval, max(0, deadline - time.monotonic())))
                     interval = min(interval * 1.5, 10)
             except RequestFailure as exc:
                 return fail(str(exc), exc.kind)
             except Exception:
                 return fail("Polling failed; task may still be running. Do not resubmit.", "poll_failed")
         try:
+            if is_interrupted():
+                return fail("Stopped before caching; task may have completed and billed. Recover it from the task console; do not resubmit.", "cancelled")
             url = output.get("video_url")
             if not isinstance(url, str) or urlsplit(url).scheme != "https":
                 raise ValueError("Missing HTTPS video URL")
