@@ -137,3 +137,47 @@ def test_relative_hermes_home_is_normalized(tmp_path: Path):
 
     assert installed.returncode == 0, installed.stderr
     assert (plugin_root(home) / "alibaba-token-plan" / "__init__.py").is_file()
+
+
+def test_video_additive_defaults_verify_backup_uninstall(tmp_path):
+    home = tmp_path / "hermes"
+    home.mkdir()
+    config = home / "config.yaml"
+    config.write_text("video_gen:\n  provider: existing\nplugins:\n  enabled: [existing]\n")
+    before = config.read_bytes()
+    video = home / "plugins/video_gen/alibaba-token-plan-video"
+    assert run_installer(home).returncode == 0
+    assert (video / "catalogue.py").is_file()
+    assert run_installer(home, "--verify").returncode == 0
+    (video / "catalogue.py").write_text("stale")
+    assert run_installer(home, "--verify").returncode != 0
+    assert run_installer(home).returncode == 0
+    assert list((video.parent / ".backups").glob("alibaba-token-plan-video.*"))
+    assert config.read_bytes() == before
+    assert run_installer(home, "--uninstall").returncode == 0
+    assert not video.exists()
+    assert config.read_bytes() == before
+
+
+def test_video_symlink_and_failed_upgrade_roll_back(tmp_path):
+    home = tmp_path / "hermes"
+    assert run_installer(home).returncode == 0
+    video = home / "plugins/video_gen/alibaba-token-plan-video"
+    (video / "old-marker").write_text("old-video")
+    chat = plugin_root(home) / "alibaba-token-plan"
+    (chat / "old-marker").write_text("old-chat")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    fake_cmp = fake_bin / "cmp"
+    fake_cmp.write_text("#!/bin/sh\nexit 1\n")
+    fake_cmp.chmod(0o755)
+    assert run_installer(home, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"}).returncode != 0
+    assert (video / "old-marker").read_text() == "old-video"
+    assert (chat / "old-marker").read_text() == "old-chat"
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    other = tmp_path / "other"
+    (other / "plugins").mkdir(parents=True)
+    (other / "plugins/video_gen").symlink_to(outside)
+    assert run_installer(other).returncode == 2
+    assert not list(outside.iterdir())

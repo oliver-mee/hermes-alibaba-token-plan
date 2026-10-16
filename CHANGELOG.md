@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — native video
+
+- Bound video submission response reads as well as polling; an interrupted or timed-out submission is never retried.
+
+- Add an opt-in native Token Plan video backend, safe async lifecycle, installer and offline contract tests.
+- Add model-specific picker details, Hermes stop handling, shorter optional polling limits and bounded transient task-read recovery without retrying submission.
+- Experimental: live generation and credit deductions have not been verified; see docs/native-video.md.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat

@@ -260,7 +260,8 @@ def test_hermes_discovery_and_runtime(tmp_path: Path) -> None:
     plugin_dir.mkdir(parents=True)
     shutil.copytree(REPO / "alibaba-token-plan", plugin_dir / "alibaba-token-plan")
 
-    env = os.environ.copy()
+    env = {name: os.environ[name] for name in ("PATH", "LANG", "SYSTEMROOT") if name in os.environ}
+    env["HOME"] = str(tmp_path)
     env["HERMES_HOME"] = str(plugin_home)
     env["PYTHONPATH"] = str(hermes_repo)
     for name in (
