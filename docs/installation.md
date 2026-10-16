@@ -80,10 +80,13 @@ plugin files before any removal.
 The release pack uses explicit repository/subdirectory pins so it can be used
 before the upstream catalog PR is accepted. Hermes records these as **custom,
 pinned** sources. Ordinary `plugins update` refuses to move a custom pin.
-Review the next release pack and install the desired exact revision explicitly
-with Hermes's `plugins install --force --ref <full-sha> --yes-deps --no-enable <owner/repo/subdir>`
-for each source. Record and restore the intended enabled state explicitly;
-`--no-enable` requests disabled installation. Verify that state before use.
+Review the next release pack and record each component's intended enabled state.
+If replacement must remain paused, first use `hermes plugins disable <plugin-name>`
+for that component. Install the desired exact revision explicitly with
+`hermes plugins install --force --ref <full-sha> --yes-deps --no-enable <owner/repo/subdir>`
+for each source. `--no-enable` suppresses a new enable request; it preserves an
+already-enabled component when replacing it. Verify the resulting state, then
+restore the recorded enabled state explicitly when ready to use the replacement.
 Never use a branch tip to move a release pin. After catalog admission, install
 by the reviewed catalog entry names to obtain catalog provenance and SHA-bump
 updates. Custom pack provenance must not be described as already catalog-reviewed.
