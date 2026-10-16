@@ -183,6 +183,15 @@ entitlement does not establish successful inference or a measured credit charge.
 - `wan3.0-video` (video; team, personal; global, cn)
 <!-- END GENERATED -->
 
+## Native file transcription (opt-in)
+
+The installer also packages a native `TranscriptionProvider` for
+`qwen-audio-3.0-asr-flash`. It requires Hermes v0.22.0+, explicit enablement and
+STT selection; installation leaves existing defaults unchanged. It uses synchronous
+multimodal HTTP, with streaming disabled. Historical Global Personal success is
+not proof of current entitlement or support for Team/China.
+See [setup, safety, evidence and pending live acceptance](NATIVE-ASR.md).
+
 ## Thinking behaviour
 
 Hermes reasoning controls are translated only for models whose Token Plan behaviour has been measured:
