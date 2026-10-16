@@ -41,11 +41,11 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Run standalone contract and installer tests
-        run: python -m pytest tests/test_profiles.py tests/test_installer.py tests/test_pr_policy.py tests/test_readme_in_sync.py -q
+        run: python -m pytest tests/test_asr.py tests/test_profiles.py tests/test_installer.py tests/test_pr_policy.py tests/test_readme_in_sync.py -q
       - name: Run syntax and compile checks
         run: |
-          bash -n install.sh
-          python -m compileall -q alibaba-token-plan tests
+          bash -n install.sh install-asr.sh
+          python -m compileall -q alibaba-token-plan alibaba-token-plan-asr tests
           git show --check --oneline --no-renames HEAD
 
   hermes-compatibility:
@@ -80,3 +80,26 @@ jobs:
         env:
           HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
         run: python -m pytest tests/test_current_hermes_integration.py -q
+
+  native-asr:
+    name: Native ASR (Hermes v0.22.0)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: NousResearch/hermes-agent
+          ref: e06df9c2eae6901f4c88f464e0ae6e753c0428b8 # v0.22.0
+          path: hermes-agent
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install CI dependencies
+        run: python -m pip install -e ./hermes-agent -r requirements-dev.txt ruamel.yaml
+      - name: Install voice-note converter for offline tests
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Test native registry and dispatcher (mocked HTTP)
+        env:
+          HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
+        run: python -m pytest tests/test_asr.py tests/test_asr_hermes_integration.py -q

@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Bound trickled ASR response reads with an elapsed-time budget, without retrying an ambiguous upload.
+
+- Harden native ASR input snapshots and decoder isolation, reject damaged PCM
+  before conversion, add actionable safe error categories and native display
+  metadata, and ship reference licence notices. Expand offline interruption,
+  hint-hook, quota recovery and installer coverage; streaming remains disabled.
+
+- Add opt-in native synchronous Global Personal Token Plan ASR, safe local
+  WAV/encoded voice-note handling, native registration/dispatch tests and
+  additive installer recovery. Requires Hermes v0.22.0+; chat compatibility
+  and active defaults are preserved. Streaming remains disabled. Paid/live
+  inference and device delivery acceptance are pending; see NATIVE-ASR.md.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat

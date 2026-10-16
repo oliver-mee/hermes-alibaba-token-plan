@@ -78,6 +78,7 @@ verify_plugin() {
 
 if [[ "$ACTION" == verify ]]; then
   verify_plugin
+  bash "$SRC/install-asr.sh" --verify
   printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"
   exit 0
 fi
@@ -85,6 +86,7 @@ fi
 mkdir -p "$DEST"
 
 if [[ "$ACTION" == uninstall ]]; then
+  bash "$SRC/install-asr.sh" --uninstall
   mkdir -p "$backup_root"
   for dir in "$target_dir" "$legacy_dir"; do
     if [[ -e "$dir" || -L "$dir" ]]; then
@@ -157,3 +159,5 @@ if [[ -n "$legacy_backup" ]]; then
   printf 'Migrated legacy profile %s (recovery copy: %s)\n' "$legacy_dir" "$legacy_backup"
 fi
 printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"
+
+bash "$SRC/install-asr.sh" install
