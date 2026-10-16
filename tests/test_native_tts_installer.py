@@ -82,7 +82,10 @@ def test_tts_incomplete_source_fails_before_upgrade(tmp_path):
     chat = plugin_root(home) / 'alibaba-token-plan'
     (chat / 'marker').write_text('preserve')
     source = tmp_path / 'source'
-    shutil.copytree(REPO, source, ignore=shutil.ignore_patterns('.git', '__pycache__', '.pytest_cache'))
+    source.mkdir()
+    shutil.copy2(REPO / 'install.sh', source / 'install.sh')
+    for directory in ('alibaba-token-plan', 'alibaba-token-plan-tts'):
+        shutil.copytree(REPO / directory, source / directory, ignore=shutil.ignore_patterns('__pycache__'))
     (source / 'alibaba-token-plan-tts/plugin.yaml').unlink()
     import os
     import subprocess
