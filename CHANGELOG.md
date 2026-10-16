@@ -6,6 +6,10 @@
   DashScope WebSocket whole-file MP3 synthesis and the confirmed `longanlingxin`
   voice. PCM streaming remains disabled. Install/verify/uninstall is additive;
   no active provider or configuration is changed. Live checks were NOT RUN.
+- Expose the model-specific documented `longanlufeng` voice and native 0.5–2.0
+  speed control; retain `longanlingxin` as default. Harden protocol diagnostics,
+  transport-log privacy, atomic artifacts and installer source/file checks.
+  Add offline concurrency, failure, namespace and native dispatcher coverage.
 
 ## 1.5.6
 

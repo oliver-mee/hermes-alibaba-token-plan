@@ -27,6 +27,10 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 import sys
+import socket
+def deny_network(*args, **kwargs):
+    raise AssertionError('Unexpected network access in offline native integration')
+socket.socket.connect = deny_network
 from hermes_cli.plugins import PluginManager
 from agent import tts_registry
 manager = PluginManager()
@@ -41,6 +45,7 @@ assert p.default_voice() == 'longanlingxin'
 assert not p.streams_pcm
 from tools import tts_tool
 from tools.tts_tool_delivery import _resolve_max_text_length
+from tools.tts_streaming import resolve_streaming_provider
 cfg = {'provider': p.name, 'voice': 'longanlingxin', p.name: {'max_text_length': 2000}}
 assert _resolve_max_text_length(p.name, cfg) == 2000
 audio = b'ID3mock-audio'
@@ -54,13 +59,28 @@ class Socket:
         if self.i == 2: return audio
         return json.dumps({'header': {'task_id': self.sent[0]['header']['task_id'], 'event': 'task-started' if self.i == 1 else 'task-finished'}})
 ws=Socket()
-with patch.object(type(p), '_key', return_value='synthetic'), patch('websockets.sync.client.connect', return_value=ws), patch.object(tts_tool, '_load_tts_config', return_value=cfg):
+with patch('websockets.sync.client.connect', return_value=ws), patch.object(tts_tool, '_load_tts_config', return_value=cfg):
     result=json.loads(tts_tool.text_to_speech_tool(text='Hello 世界', output_path=sys.argv[1]))
 assert result['success'], result
 assert Path(result['file_path']).read_bytes() == b'ID3mock-audio'
 assert ws.closed
 assert [x['header']['action'] for x in ws.sent] == ['run-task','continue-task','finish-task']
 assert tts_tool._plugin_provider_is_voice_compatible(p.name)
+# All namespaces dispatch through Hermes with the same configured voice/rate;
+# neither native streaming resolver nor the plugin invents a PCM capability.
+for name in ('alibaba-token-plan', 'alibaba-token-plan-team', 'alibaba-token-plan-cn', 'alibaba-token-plan-cn-team'):
+    selected = tts_registry.get_provider(name)
+    assert [v['id'] for v in selected.list_voices()] == ['longanlingxin', 'longanlufeng']
+    selected_cfg = {**cfg, 'provider': name, 'voice': 'longanlufeng', 'speed': 1.25}
+    assert resolve_streaming_provider(selected_cfg) is None
+    ws = Socket()
+    with patch('websockets.sync.client.connect', return_value=ws) as connect, patch.object(tts_tool, '_load_tts_config', return_value=selected_cfg):
+        result = json.loads(tts_tool.text_to_speech_tool(text='Hi 世界', output_path=str(Path(sys.argv[1]).with_name(name + '.mp3'))))
+    assert result['success'], result
+    params = ws.sent[0]['payload']['parameters']
+    assert params['voice'] == 'longanlufeng' and params['rate'] == 1.25
+    assert ('qianwenaiapi.com' in connect.call_args.args[0]) == ('-cn' in name)
+    assert ws.closed
 # The same native dispatcher backs automatic replies and per-sentence CLI/Desktop audio.
 if Path(sys.argv[2]).is_file():
     audio = Path(sys.argv[2]).read_bytes()
@@ -85,7 +105,9 @@ print('native loader + text_to_speech tool: PASS')
 '''
     # Never inherit real API keys or HOME credential stores into the subprocess.
     env = {k: v for k, v in os.environ.items() if 'KEY' not in k and 'TOKEN' not in k and 'SECRET' not in k}
-    env.update(HOME=str(tmp_path), HERMES_HOME=str(home), PYTHONPATH=HERMES, ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY='synthetic')
+    env.update(HOME=str(tmp_path), HERMES_HOME=str(home), PYTHONPATH=HERMES)
+    for name in ('PERSONAL', 'TEAM', 'CN_PERSONAL', 'CN_TEAM'):
+        env[f'ALIBABA_TOKEN_PLAN_{name}_API_KEY'] = 'synthetic'
     proc = subprocess.run([sys.executable, '-c', code, str(tmp_path / 'out.mp3'), str(fixture)], env=env, cwd=HERMES, capture_output=True, text=True, timeout=60)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert 'native loader + text_to_speech tool: PASS' in proc.stdout

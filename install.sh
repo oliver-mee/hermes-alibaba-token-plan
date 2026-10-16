@@ -59,9 +59,15 @@ if [[ -L "$backup_root" ]]; then
 fi
 
 verify_tts() {
-  [[ ! -L "$TTS_TARGET" && -d "$TTS_TARGET" ]] || return 1
+  if [[ -L "$TTS_TARGET" || ! -d "$TTS_TARGET" ]]; then
+    printf 'error: missing or symlinked installed TTS plugin\n' >&2
+    return 1
+  fi
   for required in __init__.py plugin.yaml provider.py; do
-    cmp -s "$TTS_SOURCE/$required" "$TTS_TARGET/$required" || return 1
+    if [[ -L "$TTS_TARGET/$required" || ! -f "$TTS_TARGET/$required" ]] || ! cmp -s "$TTS_SOURCE/$required" "$TTS_TARGET/$required"; then
+      printf 'error: missing, symlinked or changed TTS file: %s\n' "$required" >&2
+      return 1
+    fi
   done
 }
 
@@ -114,6 +120,12 @@ if [[ -L "$TTS_TARGET" || -L "$TTS_SOURCE" || ! -f "$TTS_SOURCE/provider.py" ]];
   printf 'error: unsafe or incomplete TTS plugin destination/source\n' >&2
   exit 2
 fi
+for required in __init__.py plugin.yaml provider.py; do
+  if [[ -L "$TTS_SOURCE/$required" || ! -f "$TTS_SOURCE/$required" ]]; then
+    printf 'error: missing or symlinked TTS source file: %s\n' "$required" >&2
+    exit 2
+  fi
+done
 
 staging_dir="$DEST/.${PLUGIN_NAME}.install-${backup_stamp}"
 tts_backup=""
