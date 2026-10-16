@@ -247,6 +247,7 @@ class TokenPlanVideoProvider(VideoGenProvider):
             headers = {"Authorization": f"Bearer {key}", "X-DashScope-Async": "enable"}
             try:
                 submitted = _json_request(client, "POST", base + "/api/v1/services/aigc/video-generation/video-synthesis",
+                                          deadline=time.monotonic() + 30,
                                           headers=headers, json={"model": model_id, "input": inputs, "parameters": params})
                 task_id = submitted.get("output", {}).get("task_id")
                 if not isinstance(task_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", task_id):

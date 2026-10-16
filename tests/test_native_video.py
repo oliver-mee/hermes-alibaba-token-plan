@@ -160,7 +160,7 @@ def test_pending_running_success(video, wire):
 
 
 def test_poll_timeout(video, wire, monkeypatch):
-    clock = iter([0, 601])
+    clock = iter([0, 0, 601])
     monkeypatch.setattr(video.time, "monotonic", lambda: next(clock))
     result = video.TokenPlanVideoProvider().generate("A cloud")
     assert result["error_type"] == "timeout"
@@ -336,7 +336,7 @@ def test_invalid_poll_timeout_before_credentials(video, wire, monkeypatch, value
 
 def test_short_poll_timeout_keeps_task_for_recovery(video, wire, monkeypatch):
     monkeypatch.setattr(video, "_config", lambda: {"poll_timeout": 1})
-    clock = iter([10, 12])
+    clock = iter([10, 10, 12])
     monkeypatch.setattr(video.time, "monotonic", lambda: next(clock))
     result = video.TokenPlanVideoProvider().generate("A cloud")
     assert result["error_type"] == "timeout"
@@ -481,3 +481,28 @@ def test_late_success_keeps_task_without_downloading(video, wire, monkeypatch):
     assert result["task_id"] == "task-123"
     assert result["resubmit_safe"] is False
     assert [c[0] for c in wire[0]] == ["POST", "GET"]
+
+
+@pytest.mark.parametrize("stop", [False, True])
+def test_submission_deadline_or_stop_never_resubmits(video, monkeypatch, stop):
+    import httpx
+    clock, calls, closed, stopped = [0.0], [], [], []
+    monkeypatch.setattr(video.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(video, "is_interrupted", lambda: bool(stopped))
+    class Trickle(httpx.SyncByteStream):
+        def __iter__(self):
+            for chunk in (b'{', b'"output":', b'{"task_id":"job"}}'):
+                clock[0] += 11
+                if stop and clock[0] > 12:
+                    stopped.append(True)
+                yield chunk
+        def close(self): closed.append(True)
+    def reply(request):
+        calls.append(request.method)
+        return httpx.Response(200, stream=Trickle())
+    client = httpx.Client(transport=httpx.MockTransport(reply))
+    monkeypatch.setattr(httpx, "Client", lambda **kw: client)
+    result = video.TokenPlanVideoProvider().generate("A cloud")
+    assert not result["success"] and not result["resubmit_safe"]
+    assert result["error_type"] == ("cancelled" if stop else "timeout")
+    assert calls == ["POST"] and closed
