@@ -37,4 +37,4 @@ jobs:
       - name: Run discovery and runtime integration test
         env:
           HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
-        run: python -m pytest -q
+        run: python -m pytest -q --ignore=tests/test_native_package.py

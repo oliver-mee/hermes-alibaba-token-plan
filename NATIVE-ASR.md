@@ -138,7 +138,7 @@ Offline commands (use an existing environment with pytest/Hermes dependencies):
 
 ```bash
 python -m pytest -q
-HERMES_AGENT_REPO=/path/to/hermes-agent python -m pytest -q
+HERMES_AGENT_REPO=/path/to/hermes-agent python -m pytest -q --ignore=tests/test_native_package.py
 bash -n install.sh install-asr.sh
 python -m compileall -q alibaba-token-plan alibaba-token-plan-media tests
 git diff --check

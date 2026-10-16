@@ -13,8 +13,12 @@ playable artifacts and actual platform delivery.
 - Shell installer acceptance: **63 passed**, including package rollback,
   ownership and preview guards, source/path checks, backups and failure injection.
 - Separate component admission/security/isolation checks pass on the inspected
-  source tree. Real native package-manager dependency preparation and lifecycle,
-  final archive checks and hosted integrated CI are still pending.
+  source tree. An exact Git archive of candidate `1d96827` passed all 381 tests
+  and both isolated component admissions. Both actual CLI admissions with
+  `--install-deps` subsequently passed with successful dependency preparation.
+  Real native package lifecycle/partial-pack acceptance: **7 passed**, including
+  custom-pin provenance, re-pin, user-state preservation and removal. Final
+  updated-candidate archive and hosted native-package CI are still pending.
 - Live gateway/inference, Token Plan credit deduction, rendered/playable vendor
   output and actual Telegram/Desktop delivery: **Not run**. No operator key was
   accessed by these checks. See [the proposed bounded live gate](live-acceptance.md).
@@ -22,6 +26,13 @@ playable artifacts and actual platform delivery.
 A later candidate changes the evidence boundary: rerun checks affected by its
 diff and update this record with the actual SHA/results. Do not copy a previous
 branch's green checks onto a new integrated commit.
+
+Native PM resolution can revalidate public upstream dependencies even after
+cache preparation. Those lifecycle checks explicitly permit public dependency
+downloads in isolated homes, with no operator credentials or provider calls;
+they are not described as fully offline. Adapter/admission/collision tests retain
+external network blocking. Dependency preparation must actually succeed; a
+static-only fallback report is insufficient.
 
 ## Native contracts and compatibility
 
