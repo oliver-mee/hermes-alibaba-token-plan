@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Honour Hermes interruption while waiting for TTS messages; preserve previous audio and remove partial artifacts.
+
 - Add an optional native Token Plan TTS plugin for Hermes v0.22.0+, using
   DashScope WebSocket whole-file MP3 synthesis and the confirmed `longanlingxin`
   voice. PCM streaming remains disabled. Install/verify/uninstall is additive;

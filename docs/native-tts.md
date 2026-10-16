@@ -94,9 +94,10 @@ measured from connection setup (10-second handshake and 2-second close timeouts)
 1 MiB message/16 MiB audio caps and a bounded receive queue. Failure or an
 interrupt closes the socket and preserves an existing output file. Closing a
 socket is not a promise of billing cancellation. No automatic retry is made
-after an ambiguous submission. This synchronous interface does not accept a
-host cancellation token: a stop in another thread may wait for the current
-sentence's receive deadline. Immediate barge-in cancellation is not claimed.
+after an ambiguous submission. The backend polls Hermes's thread-scoped
+interrupt signal using a 250 ms receive timeout and checks after each message.
+This does not establish end-to-end barge-in latency or stop playback already
+handed to the host.
 Socket sends and local storage are not covered by a hard end-to-end deadline.
 
 The plugin reserves a mode-0600 temporary file in the destination directory

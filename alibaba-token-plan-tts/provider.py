@@ -17,6 +17,7 @@ import time
 import uuid
 
 from agent.tts_provider import TTSProvider
+from tools.interrupt import is_interrupted
 
 MAX_TEXT = 2000
 MAX_AUDIO = 16 * 1024 * 1024
@@ -132,6 +133,8 @@ class TokenPlanTTSProvider(TTSProvider):
             raise ValueError("Token Plan TTS speed must be a finite number from 0.5 to 2.0")
         if format not in {"mp3", "wav", "ogg", "opus", "flac"}:
             raise ValueError("Unsupported TTS output format")
+        if is_interrupted():
+            raise _SynthesisError("Token Plan TTS interrupted before submission; no output was saved")
         key = self._key()
         if not key:
             raise ValueError(f"Set {self.key_names[-1]} for the selected Token Plan region and tier")
@@ -174,6 +177,8 @@ class TokenPlanTTSProvider(TTSProvider):
                          open_timeout=10, close_timeout=2, max_size=1024 * 1024,
                          max_queue=4, compression=None, logger=_WIRE_LOGGER) as ws:
                 def send(action, payload):
+                    if is_interrupted():
+                        raise _SynthesisError("Token Plan TTS interrupted; remote task may continue. No automatic retry was made.")
                     ws.send(json.dumps({"header": {"action": action, "task_id": task_id, "streaming": "duplex"}, "payload": payload}))
                 parameters = {"text_type": "PlainText", "voice": voice, "format": "mp3", "sample_rate": 22050}
                 if speed is not None and speed != 1.0:
@@ -184,7 +189,16 @@ class TokenPlanTTSProvider(TTSProvider):
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         raise TimeoutError()
-                    message = ws.recv(timeout=remaining)
+                    if is_interrupted():
+                        raise _SynthesisError("Token Plan TTS interrupted; remote task may continue. No automatic retry was made.")
+                    try:
+                        message = ws.recv(timeout=min(0.25, remaining))
+                    except TimeoutError:
+                        continue  # wake regularly to observe Hermes cancellation
+                    if is_interrupted():
+                        raise _SynthesisError("Token Plan TTS interrupted; remote task may continue. No automatic retry was made.")
+                    if time.monotonic() >= deadline:
+                        raise TimeoutError()
                     if isinstance(message, bytes):
                         if not started or len(audio) + len(message) > MAX_AUDIO:
                             raise _SynthesisError("Invalid or oversized Token Plan TTS audio; no output was saved")

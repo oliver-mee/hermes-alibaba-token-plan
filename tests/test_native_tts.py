@@ -20,11 +20,13 @@ def provider(monkeypatch):
     abc = types.ModuleType('agent.tts_provider')
     abc.TTSProvider = Base
     monkeypatch.setitem(sys.modules, 'agent.tts_provider', abc)
+    monkeypatch.setitem(sys.modules, 'tools.interrupt', types.SimpleNamespace(is_interrupted=lambda: False))
     spec = importlib.util.spec_from_file_location('native_tts_test', ROOT / 'alibaba-token-plan-tts/provider.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.original_key = module.TokenPlanTTSProvider._key
     monkeypatch.setattr(module.TokenPlanTTSProvider, '_key', lambda self: 'synthetic')
+    monkeypatch.setattr(module, 'is_interrupted', lambda: False)
     return module
 
 
@@ -188,6 +190,17 @@ def test_invalid_controls_never_connect(provider, monkeypatch, tmp_path, kw):
 ])
 def test_safe_actionable_errors(provider, monkeypatch, tmp_path, events, diagnostic):
     ws = Socket(events)
+    if diagnostic == 'timed out':
+        original_recv = ws.recv
+        clock = [0.0]
+        monkeypatch.setattr(provider.time, 'monotonic', lambda: clock[0])
+        def expired(timeout):
+            try:
+                return original_recv(timeout)
+            except TimeoutError:
+                clock[0] = provider.TIMEOUT
+                raise
+        ws.recv = expired
     calls = transport(monkeypatch, ws)
     with pytest.raises(RuntimeError, match=diagnostic) as exc:
         provider.TokenPlanTTSProvider().synthesize('private-text', str(tmp_path / 'x.mp3'))
@@ -395,3 +408,37 @@ def test_real_websocket_library_on_loopback(provider, monkeypatch, tmp_path, cap
     assert [r['header']['action'] for r in received] == ['run-task', 'continue-task', 'finish-task']
     assert 'synthetic' not in caplog.text and 'private-text' not in caplog.text
     assert Path(output).stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("phase", ["before", "silent", "audio", "finished"])
+def test_native_interrupt_preserves_output(provider, monkeypatch, tmp_path, phase):
+    stopped = [phase == "before"]
+    monkeypatch.setattr(provider, "is_interrupted", lambda: stopped[0])
+    class InterruptSocket(Socket):
+        def recv(self, timeout):
+            assert timeout <= 0.25
+            if phase == "silent":
+                stopped[0] = True
+                raise TimeoutError()
+            message = super().recv(timeout)
+            if ((phase == "audio" and isinstance(message, bytes))
+                    or (phase == "finished" and isinstance(message, str) and "task-finished" in message)):
+                stopped[0] = True
+            return message
+    ws = InterruptSocket(['task-started', b'ID3audio', 'task-finished'])
+    calls = transport(monkeypatch, ws)
+    target = tmp_path / 'voice.mp3'
+    target.write_bytes(b'previous')
+    with pytest.raises(RuntimeError, match='interrupted'):
+        provider.TokenPlanTTSProvider().synthesize('hello', str(target))
+    assert target.read_bytes() == b'previous' and list(tmp_path.iterdir()) == [target]
+    assert len(calls) == (0 if phase == 'before' else 1)
+    if phase != 'before': assert ws.closed
+
+
+def test_short_receive_timeout_can_resume(provider, monkeypatch, tmp_path):
+    ws = Socket([TimeoutError(), 'task-started', TimeoutError(), b'ID3audio', 'task-finished'])
+    calls = transport(monkeypatch, ws)
+    result = provider.TokenPlanTTSProvider().synthesize('hello', str(tmp_path / 'voice.mp3'))
+    assert Path(result).read_bytes() == b'ID3audio'
+    assert len(calls) == 1 and ws.closed
