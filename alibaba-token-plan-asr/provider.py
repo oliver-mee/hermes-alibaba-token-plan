@@ -12,6 +12,7 @@ from pathlib import Path
 import stat
 import subprocess
 import tempfile
+import time
 import wave
 
 from agent.secret_scope import get_secret
@@ -126,6 +127,7 @@ def normalise(file_path):
 def post(payload, key):
     """Single attempt, fixed host, no redirects, bounded response, no error-body leakage."""
     connection = http.client.HTTPSConnection("token-plan.maas.qwencloudapi.com", timeout=60)
+    deadline = time.monotonic() + 60
     try:
         connection.request("POST", ROUTE, body=json.dumps(payload), headers={
             "Authorization": "Bearer " + key, "Content-Type": "application/json",
@@ -135,9 +137,24 @@ def post(payload, key):
             reason = {401: "credential rejected", 403: "entitlement denied", 429: "quota or rate limit"}.get(response.status, "upstream failure")
             kind = {401: "credential", 403: "entitlement", 429: "quota"}.get(response.status, "upstream")
             raise ASRError(f"ASR HTTP {response.status}: {reason}; no retry was made", kind)
-        raw = response.read(MAX_RESPONSE + 1)
-        if len(raw) > MAX_RESPONSE:
-            raise ASRError("ASR response exceeds 1 MiB", "response")
+        raw = bytearray()
+        # read1 yields available bytes rather than waiting for a full buffer;
+        # slow trickled responses cannot reset a sixty-second wall-clock limit.
+        reader = getattr(response, "read1", response.read)
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError()
+            if getattr(connection, "sock", None) is not None:
+                connection.sock.settimeout(remaining)
+            chunk = reader(min(65536, MAX_RESPONSE + 1 - len(raw)))
+            if time.monotonic() >= deadline:
+                raise TimeoutError()
+            if not chunk:
+                break
+            raw.extend(chunk)
+            if len(raw) > MAX_RESPONSE:
+                raise ASRError("ASR response exceeds 1 MiB", "response")
         result = json.loads(raw)
         if not isinstance(result, dict):
             raise ASRError("ASR response must be an object", "response")

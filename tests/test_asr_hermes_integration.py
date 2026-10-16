@@ -56,7 +56,7 @@ import socket
 calls = []
 class Response:
     status = 200
-    def read(self, limit): return b'{"output":{"text":"hello"}}'
+    def __init__(self): self.read = io.BytesIO(b'{"output":{"text":"hello"}}').read
 class Connection:
     def __init__(self, host, timeout):
         assert host == 'token-plan.maas.qwencloudapi.com'

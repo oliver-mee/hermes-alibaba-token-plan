@@ -140,7 +140,7 @@ def test_successful_http_payload_and_close(asr, monkeypatch):
         def __init__(self, *a, **kw): pass
         def request(self, *args, **kwargs): calls.append(kwargs)
         def getresponse(self):
-            return types.SimpleNamespace(status=200, read=lambda limit: b'{"output":{"text":"hi"}}')
+            return types.SimpleNamespace(status=200, read=io.BytesIO(b'{"output":{"text":"hi"}}').read)
         def close(self): calls.append("closed")
     monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
     assert asr.post({"model": "test"}, "synthetic")["output"]["text"] == "hi"
@@ -153,7 +153,7 @@ def test_malformed_upstream_never_leaks(asr, audio, monkeypatch, raw):
     class Connection:
         def __init__(self, *a, **kw): pass
         def request(self, *a, **kw): pass
-        def getresponse(self): return types.SimpleNamespace(status=200, read=lambda limit: raw)
+        def getresponse(self): return types.SimpleNamespace(status=200, read=io.BytesIO(raw).read)
         def close(self): pass
     monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
     result = asr.TokenPlanASR().transcribe(str(audio))
@@ -296,7 +296,7 @@ def test_response_error_categories(asr, audio, monkeypatch, raw):
     class Connection:
         def __init__(self, *a, **kw): pass
         def request(self, *a, **kw): pass
-        def getresponse(self): return types.SimpleNamespace(status=200, read=lambda limit: raw)
+        def getresponse(self): return types.SimpleNamespace(status=200, read=io.BytesIO(raw).read)
         def close(self): pass
     monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
     result = asr.TokenPlanASR().transcribe(audio)
@@ -326,3 +326,27 @@ def test_changed_input_snapshot_is_rejected(asr, audio, monkeypatch):
     monkeypatch.setattr(asr, "post", lambda *a: pytest.fail("Changed recording must not upload"))
     result = asr.TokenPlanASR().transcribe(audio)
     assert not result["success"] and "changed while reading" in result["error"]
+
+
+@pytest.mark.parametrize("eof", [False, True])
+def test_trickled_or_late_eof_response_times_out_once(asr, monkeypatch, eof):
+    clock, calls, closed = [0.0], [], []
+    monkeypatch.setattr(asr.time, "monotonic", lambda: clock[0])
+    class Response:
+        status = 200
+        def read(self, cap): pytest.fail("Buffered read must not hide trickled bytes")
+        def read1(self, cap):
+            clock[0] += 31
+            return b"" if eof else b" "
+    class Connection:
+        def __init__(self, *args, **kw): pass
+        def request(self, *args, **kw): calls.append(args[0])
+        def getresponse(self):
+            if eof: clock[0] = 31
+            return Response()
+        def close(self): closed.append(True)
+    monkeypatch.setattr(asr.http.client, "HTTPSConnection", Connection)
+    with pytest.raises(asr.ASRError) as caught:
+        asr.post({}, "synthetic")
+    assert caught.value.kind == "timeout"
+    assert calls == ["POST"] and closed

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Bound trickled ASR response reads with an elapsed-time budget, without retrying an ambiguous upload.
+
 - Harden native ASR input snapshots and decoder isolation, reject damaged PCM
   before conversion, add actionable safe error categories and native display
   metadata, and ship reference licence notices. Expand offline interruption,
