@@ -5,9 +5,13 @@ whole-file speech synthesis and file transcription through the standard native
 tools and voice pipeline. Requires Hermes v0.22.0+; chat is a separate component.
 The generated catalogue is bundled here, so this package works without chat.
 
-Install using the coordinated release pack or this native subdirectory, then
-explicitly enable `alibaba-token-plan-media` and select each desired provider.
-Installation does not select a provider. Existing preview media plugins must be
+Install using the coordinated release pack, which enables its components after
+confirmation, or install this native subdirectory and explicitly enable
+`alibaba-token-plan-media`. Select each desired provider separately.
+Installation does not write a default provider, but Hermes can fall back to an
+enabled available backend when none is configured. Existing chat keys can make
+Personal media available; configure explicit native providers before use, or
+disable this plugin for chat-only operation. No generation occurs on import. Existing preview media plugins must be
 migrated first. See the repository's [installation guide](../docs/installation.md).
 
 ## Accounts, privacy and billing

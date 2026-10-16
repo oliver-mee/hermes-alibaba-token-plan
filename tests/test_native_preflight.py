@@ -21,7 +21,7 @@ def test_fresh_and_native_managed_homes(tmp_path):
     assert check(tmp_path) == []
 
 
-@pytest.mark.parametrize("component", ["model-providers/alibaba-token-plan", "model-providers/alibaba-token-plan-cn", "video_gen/alibaba-token-plan-video", "image_gen/alibaba-token-plan-image", "alibaba-token-plan-tts", "alibaba-token-plan-asr", "alibaba-token-plan-provider", "alibaba-token-plan-media"])
+@pytest.mark.parametrize("component", ["model-providers/alibaba-token-plan", "model-providers/alibaba-token-plan-cn", "video_gen/alibaba-token-plan-video", "image_gen/alibaba-token-plan-image", "alibaba-token-plan-tts", "alibaba-token-plan-asr", "alibaba-token-plan-provider", "alibaba-token-plan", "alibaba-token-plan-media", "alibaba-token-plan-video", "alibaba-token-plan-image"])
 def test_existing_unmanaged_components_block_without_changes(tmp_path, component):
     path = tmp_path / "plugins" / component
     path.mkdir(parents=True)

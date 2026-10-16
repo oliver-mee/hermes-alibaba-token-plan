@@ -12,6 +12,12 @@ asset with `hermes plugins pack show ./hermes-pack.yaml`; installation is
 interactive and preserves normal per-component consent. Do not pipe an install
 command through a heredoc or assume a non-interactive confirmation flag exists.
 
+After pack confirmation, Hermes enables its components. With no configured
+media provider, Hermes's native fallback may select an enabled available backend,
+including Token Plan using an existing chat credential. Configure each intended
+provider explicitly before invoking media tools, or disable the combined media
+plugin to retain chat only. No generation is submitted during installation.
+
 Native installation does not run this repository's shell installer. Each catalog
 entry selects its own subdirectory. Hermes owns installation metadata, dependency
 preparation, updates and removal. Use the native package names shown by
@@ -36,8 +42,8 @@ package-manager installations.
    the plugins discovery directory. Never delete unknown or modified directories.
 4. Rerun the preflight. If it reports ambiguous, symlinked or unmanaged paths,
    resolve those explicitly; do not modify Hermes's install ledger by hand.
-5. Review and install the release pack. Enable `alibaba-token-plan-media` explicitly
-   and preserve unrelated enabled entries. Use the existing provider names in the
+5. Review and install the release pack. Hermes enables its installed components
+   after the pack confirmation; preserve unrelated enabled entries. Use the existing provider names in the
    native configuration examples. Remove obsolete preview plugin IDs only after
    recording the previous configuration.
 6. Verify one chat registration per provider and one media plugin, then exercise

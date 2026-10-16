@@ -7,8 +7,10 @@ from pathlib import Path
 
 LEGACY = (
     "model-providers/alibaba-token-plan", "model-providers/alibaba-token-plan-cn",
+    "alibaba-token-plan",
     "video_gen/alibaba-token-plan-video", "image_gen/alibaba-token-plan-image",
     "alibaba-token-plan-tts", "alibaba-token-plan-asr",
+    "alibaba-token-plan-video", "alibaba-token-plan-image",
 )
 COMPONENTS = ("alibaba-token-plan-provider", "alibaba-token-plan-media")
 

@@ -52,8 +52,13 @@ Before migrating an existing installation, follow [the preflight and backup step
 The pack installs chat and media as separate pinned plugins; it is not an atomic
 multi-plugin update. A partial failure leaves individually completed installs
 in place. Resolve the reported failure before continuing; do not bypass guards.
-The pack does not contain keys, select a provider or grant capabilities for you.
-Enable the media plugin explicitly and configure the desired native provider.
+The pack contains no keys and selects no default provider. After its review and
+confirmation, Hermes enables the installed components using its normal consent
+flow. Configure the desired native provider separately. When none is configured,
+Hermes may choose an available enabled backend automatically; an existing chat
+key can make Personal media available. Set explicit providers before using media,
+or disable `alibaba-token-plan-media` if you want chat only. Installation itself
+does not submit generation requests.
 Only the account/region/tier whose credential you configure can be selected.
 
 For a tagged source checkout, or older chat-only Hermes:

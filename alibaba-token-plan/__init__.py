@@ -23,12 +23,16 @@ def _check_install_location():
     from pathlib import Path
     here = Path(__file__).resolve().parent
     if here.name == "alibaba-token-plan-provider":
-        other = here.parent / "model-providers" / "alibaba-token-plan"
+        root = here.parent
     elif here.name == "alibaba-token-plan" and here.parent.name == "model-providers":
-        other = here.parent.parent / "alibaba-token-plan-provider"
+        root = here.parent.parent
+    elif here.name == "alibaba-token-plan" and here.parent.name == "plugins":
+        root = here.parent
     else:
         return  # source checkout or an explicitly named custom package
-    if other.exists() or other.is_symlink():
+    locations = (root / "model-providers/alibaba-token-plan",
+                 root / "alibaba-token-plan-provider", root / "alibaba-token-plan")
+    if any(other != here and (other.exists() or other.is_symlink()) for other in locations):
         raise RuntimeError("Duplicate Token Plan chat installation; follow the documented shell/native migration before loading")
 
 
