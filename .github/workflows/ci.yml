@@ -41,11 +41,11 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Run standalone contract and installer tests
-        run: python -m pytest tests/test_profiles.py tests/test_installer.py tests/test_pr_policy.py tests/test_readme_in_sync.py -q
+        run: python -m pytest tests/test_profiles.py tests/test_installer.py tests/test_pr_policy.py tests/test_readme_in_sync.py tests/test_native_tts.py tests/test_native_tts_installer.py -q
       - name: Run syntax and compile checks
         run: |
           bash -n install.sh
-          python -m compileall -q alibaba-token-plan tests
+          python -m compileall -q alibaba-token-plan alibaba-token-plan-tts tests
           git show --check --oneline --no-renames HEAD
 
   hermes-compatibility:
@@ -80,3 +80,32 @@ jobs:
         env:
           HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
         run: python -m pytest tests/test_current_hermes_integration.py -q
+
+  native-tts:
+    name: Native TTS (${{ matrix.label }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: Hermes v0.22.0, Python 3.11, websockets 14
+            python: "3.11"
+            websockets: "websockets>=14,<15"
+          - label: Hermes v0.22.0, Python 3.13, websockets 16
+            python: "3.13"
+            websockets: "websockets>=16,<17"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: NousResearch/hermes-agent
+          ref: 84094bd903791c35867605e28e25075baa293adc
+          path: hermes-agent
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -e ./hermes-agent -r requirements-dev.txt ruamel.yaml '${{ matrix.websockets }}'
+      - run: python -m pytest tests/test_native_tts.py tests/test_native_tts_installer.py tests/test_native_tts_integration.py -q
+        env:
+          HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent

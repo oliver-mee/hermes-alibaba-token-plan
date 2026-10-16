@@ -162,7 +162,9 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 The generated `MEDIA_MODELS` metadata in `fallback_models.py` records the plan's
 non-chat models alongside the chat lists. These are not chat-picker entries:
 `wan3.0-video`, for example, uses asynchronous video synthesis, not Chat
-Completions. This provider does not implement media job submission or polling.
+Completions. The chat provider does not implement media job submission or polling.
+An optional [native TTS backend](docs/native-tts.md) adds speech synthesis through
+Hermes v0.22.0+ without changing existing defaults.
 See the [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 for the per-model endpoints, rates and dated entitlement evidence. Listing
 entitlement does not establish successful inference or a measured credit charge.

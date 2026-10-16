@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Honour Hermes interruption while waiting for TTS messages; preserve previous audio and remove partial artifacts.
+
+- Add an optional native Token Plan TTS plugin for Hermes v0.22.0+, using
+  DashScope WebSocket whole-file MP3 synthesis and the confirmed `longanlingxin`
+  voice. PCM streaming remains disabled. Install/verify/uninstall is additive;
+  no active provider or configuration is changed. Live checks were NOT RUN.
+- Expose the model-specific documented `longanlufeng` voice and native 0.5–2.0
+  speed control; retain `longanlingxin` as default. Harden protocol diagnostics,
+  transport-log privacy, atomic artifacts and installer source/file checks.
+  Add offline concurrency, failure, namespace and native dispatcher coverage.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat

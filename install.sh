@@ -10,6 +10,9 @@ DEST="$HERMES_HOME/plugins/model-providers"
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PLUGIN_NAME="alibaba-token-plan"
 LEGACY_NAME="alibaba-token-plan-cn"
+# Additive ordinary backend, independent of sibling video/ASR plugins.
+TTS_SOURCE="$SRC/alibaba-token-plan-tts"
+TTS_TARGET="$HERMES_HOME/plugins/alibaba-token-plan-tts"
 
 case "${1:-install}" in
   install) ACTION=install ;;
@@ -55,6 +58,19 @@ if [[ -L "$backup_root" ]]; then
   exit 2
 fi
 
+verify_tts() {
+  if [[ -L "$TTS_TARGET" || ! -d "$TTS_TARGET" ]]; then
+    printf 'error: missing or symlinked installed TTS plugin\n' >&2
+    return 1
+  fi
+  for required in __init__.py plugin.yaml provider.py; do
+    if [[ -L "$TTS_TARGET/$required" || ! -f "$TTS_TARGET/$required" ]] || ! cmp -s "$TTS_SOURCE/$required" "$TTS_TARGET/$required"; then
+      printf 'error: missing, symlinked or changed TTS file: %s\n' "$required" >&2
+      return 1
+    fi
+  done
+}
+
 verify_plugin() {
   if [[ -L "$target_dir" || ! -d "$target_dir" ]]; then
     printf 'error: missing or symlinked installed plugin: %s\n' "$target_dir" >&2
@@ -78,6 +94,7 @@ verify_plugin() {
 
 if [[ "$ACTION" == verify ]]; then
   verify_plugin
+  verify_tts
   printf 'Verified Alibaba Token Plan plugin files in %s\n' "$DEST"
   exit 0
 fi
@@ -86,7 +103,7 @@ mkdir -p "$DEST"
 
 if [[ "$ACTION" == uninstall ]]; then
   mkdir -p "$backup_root"
-  for dir in "$target_dir" "$legacy_dir"; do
+  for dir in "$target_dir" "$legacy_dir" "$TTS_TARGET"; do
     if [[ -e "$dir" || -L "$dir" ]]; then
       name="${dir##*/}"
       recovery_dir="$backup_root/${name}.${backup_stamp}"
@@ -99,7 +116,20 @@ if [[ "$ACTION" == uninstall ]]; then
   exit 0
 fi
 
+if [[ -L "$TTS_TARGET" || -L "$TTS_SOURCE" || ! -f "$TTS_SOURCE/provider.py" ]]; then
+  printf 'error: unsafe or incomplete TTS plugin destination/source\n' >&2
+  exit 2
+fi
+for required in __init__.py plugin.yaml provider.py; do
+  if [[ -L "$TTS_SOURCE/$required" || ! -f "$TTS_SOURCE/$required" ]]; then
+    printf 'error: missing or symlinked TTS source file: %s\n' "$required" >&2
+    exit 2
+  fi
+done
+
 staging_dir="$DEST/.${PLUGIN_NAME}.install-${backup_stamp}"
+tts_backup=""
+tts_installed=false
 main_backup=""
 legacy_backup=""
 
@@ -111,6 +141,12 @@ cp -a "$source_dir" "$staging_dir"
 
 rollback_install() {
   mkdir -p "$backup_root"
+  if [[ "$tts_installed" == true && -d "$TTS_TARGET" ]]; then
+    mv "$TTS_TARGET" "$backup_root/alibaba-token-plan-tts.failed-${backup_stamp}" || true
+  fi
+  if [[ -n "$tts_backup" && -e "$tts_backup" ]]; then
+    mv "$tts_backup" "$TTS_TARGET" || true
+  fi
   if [[ -e "$target_dir" || -L "$target_dir" ]]; then
     mv "$target_dir" "$backup_root/${PLUGIN_NAME}.failed-${backup_stamp}" || true
   fi
@@ -144,6 +180,17 @@ if [[ -e "$legacy_dir" || -L "$legacy_dir" ]]; then
 fi
 
 if ! mv "$staging_dir" "$target_dir" || ! verify_plugin; then
+  rollback_install
+  exit 1
+fi
+
+if [[ -e "$TTS_TARGET" ]]; then
+  mkdir -p "$backup_root"
+  tts_backup="$backup_root/alibaba-token-plan-tts.${backup_stamp}"
+  if ! mv "$TTS_TARGET" "$tts_backup"; then rollback_install; exit 1; fi
+fi
+tts_installed=true
+if ! mkdir -p "$TTS_TARGET" || ! cp "$TTS_SOURCE/__init__.py" "$TTS_SOURCE/plugin.yaml" "$TTS_SOURCE/provider.py" "$TTS_TARGET/" || ! verify_tts; then
   rollback_install
   exit 1
 fi
