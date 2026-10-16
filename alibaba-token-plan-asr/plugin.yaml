@@ -1,5 +1,0 @@
-name: alibaba-token-plan-asr
-version: 0.1.0
-description: Opt-in synchronous Token Plan file transcription
-license: MIT
-requires_hermes: ">=0.22.0"

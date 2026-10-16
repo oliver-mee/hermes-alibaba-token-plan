@@ -18,5 +18,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("models_json", type=Path)
     args = parser.parse_args()
-    target = Path(__file__).resolve().parents[1] / "image-gen/alibaba-token-plan-image/catalogue.json"
+    target = Path(__file__).resolve().parents[1] / "alibaba-token-plan-media/image/catalogue.json"
     target.write_text(render(json.loads(args.models_json.read_text())))

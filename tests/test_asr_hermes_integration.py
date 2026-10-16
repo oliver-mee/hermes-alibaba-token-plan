@@ -12,12 +12,14 @@ HERMES = os.environ.get("HERMES_AGENT_REPO", "")
 pytestmark = pytest.mark.skipif(not HERMES, reason="Set HERMES_AGENT_REPO for native integration")
 
 
-def test_native_asr_registration_and_dispatch(tmp_path):
+@pytest.mark.parametrize("with_chat", [False, True], ids=["media-alone", "chat-and-media"])
+def test_native_asr_registration_and_dispatch(tmp_path, with_chat):
     home = tmp_path / "home"
     plugins = home / "plugins"
-    shutil.copytree(ROOT / "alibaba-token-plan-asr", plugins / "alibaba-token-plan-asr")
-    shutil.copytree(ROOT / "alibaba-token-plan", plugins / "model-providers/alibaba-token-plan")
-    (home / "config.yaml").write_text('plugins:\n  enabled: [alibaba-token-plan-asr]\nstt:\n  enabled: true\n  provider: alibaba-token-plan-asr\n  language: en\n  alibaba-token-plan-asr:\n    language: auto\n')
+    shutil.copytree(ROOT / "alibaba-token-plan-media", plugins / "alibaba-token-plan-media")
+    if with_chat:
+        shutil.copytree(ROOT / "alibaba-token-plan", plugins / "model-providers/alibaba-token-plan")
+    (home / "config.yaml").write_text('plugins:\n  enabled: [alibaba-token-plan-media]\nstt:\n  enabled: true\n  provider: alibaba-token-plan-asr\n  language: en\n  alibaba-token-plan-asr:\n    language: auto\n')
     # Do not inherit operator credentials, dotenv locations, hooks or profile settings.
     env = {key: os.environ[key] for key in ("PATH", "LANG", "SYSTEMROOT") if key in os.environ}
     env.update(HOME=str(home), HERMES_HOME=str(home), PYTHONPATH=str(Path(HERMES).resolve()),
@@ -34,7 +36,22 @@ from agent.transcription_registry import get_provider
 from tools import transcription_tools
 manager = PluginManager()
 manager.discover_and_load()
-assert manager._plugins['alibaba-token-plan-asr'].enabled, manager._plugins['alibaba-token-plan-asr'].error
+# Enabling one package loads all four native registries together. Only the root
+# media manifest is discovered, including when no chat sibling is installed.
+expected = {'alibaba-token-plan-media'}
+if (Path.home() / 'plugins/model-providers/alibaba-token-plan').is_dir():
+    expected.add('model-providers/alibaba-token-plan')
+user_plugins = {key for key, info in manager._plugins.items() if info.manifest.source == 'user'}
+assert user_plugins == expected, user_plugins
+from agent import image_gen_registry, video_gen_registry, tts_registry
+assert len(image_gen_registry.get_provider('alibaba-token-plan').list_models()) == 2
+assert len(image_gen_registry.get_provider('alibaba-token-plan-team').list_models()) == 4
+assert len(video_gen_registry.get_provider('alibaba-token-plan').list_models()) == 4
+for name in ('alibaba-token-plan', 'alibaba-token-plan-team', 'alibaba-token-plan-cn', 'alibaba-token-plan-cn-team'):
+    tts = tts_registry.get_provider(name)
+    assert tts.default_model() == 'qwen-audio-3.0-tts-plus'
+    assert not tts.streams_pcm
+assert manager._plugins['alibaba-token-plan-media'].enabled, manager._plugins['alibaba-token-plan-media'].error
 provider = get_provider('alibaba-token-plan-asr')
 assert provider is not None
 assert not provider.streaming_capable

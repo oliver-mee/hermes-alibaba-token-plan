@@ -35,7 +35,7 @@ def video(monkeypatch):
         interrupt = types.ModuleType("tools.interrupt")
         interrupt.is_interrupted = lambda: False
         monkeypatch.setitem(sys.modules, "tools.interrupt", interrupt)
-    spec = importlib.util.spec_from_file_location("_native_video", ROOT / "video-gen/alibaba-token-plan-video/__init__.py", submodule_search_locations=[str(ROOT / "video-gen/alibaba-token-plan-video")])
+    spec = importlib.util.spec_from_file_location("_native_video", ROOT / "alibaba-token-plan-media/video/__init__.py", submodule_search_locations=[str(ROOT / "alibaba-token-plan-media/video")])
     mod = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, spec.name, mod)
     spec.loader.exec_module(mod)
@@ -226,7 +226,7 @@ def test_native_registration_and_tool_dispatch(video, wire, monkeypatch):
         pytest.skip("Real Hermes contract runs in dedicated integration subprocess")
     from hermes_cli.plugins import PluginContext, PluginManager, PluginManifest
     from agent import video_gen_registry
-    ctx = PluginContext(PluginManifest(name="alibaba-token-plan-video"), PluginManager())
+    ctx = PluginContext(PluginManifest(name="alibaba-token-plan-media"), PluginManager())
     video.register(ctx)
     provider = video_gen_registry.get_provider("alibaba-token-plan")
     assert isinstance(provider, video.TokenPlanVideoProvider)
@@ -357,7 +357,7 @@ def test_picker_metadata_is_complete_and_independent(video):
 
 
 def test_generated_catalogue_is_current():
-    target = ROOT / "video-gen/alibaba-token-plan-video/catalogue.py"
+    target = ROOT / "alibaba-token-plan-media/video/catalogue.py"
     before = target.read_bytes()
     runpy.run_path(str(ROOT / "scripts/sync-video-catalogue.py"))
     assert target.read_bytes() == before

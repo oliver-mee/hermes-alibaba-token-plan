@@ -1,0 +1,12 @@
+name: alibaba-token-plan-media
+version: 1.6.0
+description: Native Token Plan image, video, speech synthesis and file transcription
+manifest_version: 2
+api_version: 1
+requires_hermes: ">=0.22.0"
+license: MIT
+author: Oliver Mee
+python_dependencies:
+  - "httpx>=0.28,<0.29"
+  - "websockets>=14,<17"
+tags: [image, video, tts, asr, alibaba, token-plan]

@@ -21,7 +21,7 @@ def provider(monkeypatch):
     abc.TTSProvider = Base
     monkeypatch.setitem(sys.modules, 'agent.tts_provider', abc)
     monkeypatch.setitem(sys.modules, 'tools.interrupt', types.SimpleNamespace(is_interrupted=lambda: False))
-    spec = importlib.util.spec_from_file_location('native_tts_test', ROOT / 'alibaba-token-plan-tts/provider.py')
+    spec = importlib.util.spec_from_file_location('native_tts_test', ROOT / 'alibaba-token-plan-media/tts/provider.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.original_key = module.TokenPlanTTSProvider._key
@@ -360,7 +360,7 @@ def test_scoped_key_alias_precedence(provider, monkeypatch, region, tier, names)
 
 def test_old_host_registration_guard(tmp_path):
     # Importing/registering on a host without TTS must not import its missing ABC.
-    spec = importlib.util.spec_from_file_location('tts_old_host', ROOT / 'alibaba-token-plan-tts/__init__.py')
+    spec = importlib.util.spec_from_file_location('tts_old_host', ROOT / 'alibaba-token-plan-media/tts/__init__.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.register(types.SimpleNamespace())
@@ -442,3 +442,24 @@ def test_short_receive_timeout_can_resume(provider, monkeypatch, tmp_path):
     result = provider.TokenPlanTTSProvider().synthesize('hello', str(tmp_path / 'voice.mp3'))
     assert Path(result).read_bytes() == b'ID3audio'
     assert len(calls) == 1 and ws.closed
+
+
+def test_media_entrypoint_import_is_inert(monkeypatch):
+    """Loading the disabled plugin must not import native transports or secrets."""
+    import builtins
+    original_import = builtins.__import__
+    def guarded_import(name, *args, **kwargs):
+        if name.split(".")[0] in {"agent", "tools", "httpx", "websockets", "providers"}:
+            raise AssertionError("Entry point imported a runtime dependency: " + name)
+        return original_import(name, *args, **kwargs)
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+    spec = importlib.util.spec_from_file_location(
+        "inert_media_entrypoint", ROOT / "alibaba-token-plan-media/__init__.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert callable(module.register)
+
+
+def test_media_bundles_exact_canonical_catalogue():
+    assert (ROOT / "alibaba-token-plan-media/fallback_models.py").read_bytes() == (
+        ROOT / "alibaba-token-plan/fallback_models.py").read_bytes()

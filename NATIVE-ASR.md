@@ -7,7 +7,7 @@ It never calls the generic OpenAI `/audio/transcriptions` endpoint or `/models`.
 
 ## Install and configure
 
-Run the normal `./install.sh`; it also installs `alibaba-token-plan-asr` under
+Run the normal `./install.sh`; it also installs the combined `alibaba-token-plan-media` plugin under
 `${HERMES_HOME:-~/.hermes}/plugins/`. Chat remains under `plugins/model-providers/`.
 Native ASR requires Hermes **v0.22.0 or newer** with
 `register_transcription_provider`, `TranscriptionProvider` and scoped secret lookup.
@@ -22,7 +22,7 @@ existing configuration, retaining other enabled plugins:
 ```yaml
 plugins:
   enabled:
-    - alibaba-token-plan-asr
+    - alibaba-token-plan-media
 stt:
   enabled: true
   provider: alibaba-token-plan-asr
@@ -121,23 +121,16 @@ closing a connection cannot guarantee cancellation of server work. No worker
 thread or persisted transcript/subtitle artifact is created. Standard transcript/error
 results contain no audio or credentials.
 
-## Installation recovery and sibling PR integration
+## Installation recovery
 
-`./install.sh --verify` checks chat and ASR files, including the MIT licence
-and Deepgram reference notice shipped with the ASR directory. Upgrade/uninstall
-preserve ASR copies under `plugins/.backups/`; chat retains its existing recovery mechanism.
-`./install.sh --uninstall` removes both plugin directories without editing config.
-For rollback, disable ASR/restore the previous STT selection, then restore the saved
-plugin directory from its recovery copy if needed. Backups may contain older code.
-Transactions are per plugin: if ASR installation fails after chat succeeds, fix the
-reported destination problem and rerun installation; chat is not rolled back.
-
-This PR is independently reviewable against main, but the approved integration
-order is **video → TTS → ASR**. Its small `install-asr.sh` hook is deliberately
-additive and has no dependency on either feature's execution code. Reconcile
-installer hooks/docs/CI with the video PR's shared packaging before merge. No new
-shared credential framework is introduced; later shared plumbing must preserve
-legacy precedence, profile isolation and this Global Personal gate.
+ASR is part of the combined media component. `./install.sh --verify` checks the
+complete chat/media package, including licences. Shell install/upgrade/removal
+uses one rollback journal across both components, with backups under the
+respective plugin roots. `install-asr.sh` is a compatibility entrypoint for the
+full package installer; it no longer performs a separate partial transaction.
+Neither entrypoint changes STT configuration. See
+[installation, migration and recovery](docs/installation.md), especially before
+moving from standalone preview plugins to the native pack.
 
 ## Validation and proposed live budget
 
@@ -147,7 +140,7 @@ Offline commands (use an existing environment with pytest/Hermes dependencies):
 python -m pytest -q
 HERMES_AGENT_REPO=/path/to/hermes-agent python -m pytest -q
 bash -n install.sh install-asr.sh
-python -m compileall -q alibaba-token-plan alibaba-token-plan-asr tests
+python -m compileall -q alibaba-token-plan alibaba-token-plan-media tests
 git diff --check
 ```
 

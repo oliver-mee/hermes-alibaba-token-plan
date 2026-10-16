@@ -52,9 +52,7 @@ def _check_target(target):
 
 def _models():
     # Use the installed generated catalogue, not a second maintained model list.
-    path = Path(__file__).resolve().parent.parent / "model-providers" / "alibaba-token-plan" / "fallback_models.py"
-    if not path.is_file():  # source checkout
-        path = Path(__file__).resolve().parent.parent / "alibaba-token-plan" / "fallback_models.py"
+    path = Path(__file__).resolve().parent.parent / "fallback_models.py"
     spec = importlib.util.spec_from_file_location("_token_plan_tts_catalogue", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

@@ -15,8 +15,10 @@ HERMES = os.environ.get('HERMES_AGENT_REPO', '')
 def test_native_loader_and_speech_tool(tmp_path):
     home = tmp_path / 'hermes'
     home.mkdir()
-    subprocess.run([str(ROOT / 'install.sh')], env={**os.environ, 'HERMES_HOME': str(home)}, check=True, capture_output=True)
-    (home / 'config.yaml').write_text('plugins:\n  enabled: [alibaba-token-plan-tts]\n')
+    env = {k: os.environ[k] for k in ('PATH', 'LANG', 'SYSTEMROOT') if k in os.environ}
+    env.update(HOME=str(tmp_path), HERMES_HOME=str(home), PYTHONPATH=HERMES)
+    subprocess.run([str(ROOT / 'install.sh')], env=env, check=True, capture_output=True)
+    (home / 'config.yaml').write_text('plugins:\n  enabled: [alibaba-token-plan-media]\n')
     fixture = tmp_path / 'fixture.mp3'
     if shutil.which('ffmpeg'):
         subprocess.run(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i',
@@ -35,7 +37,7 @@ from hermes_cli.plugins import PluginManager
 from agent import tts_registry
 manager = PluginManager()
 manager.discover_and_load()
-info = manager._plugins['alibaba-token-plan-tts']
+info = manager._plugins['alibaba-token-plan-media']
 assert info.enabled, info.error
 p = tts_registry.get_provider('alibaba-token-plan')
 assert p is not None
@@ -105,8 +107,6 @@ if Path(sys.argv[2]).is_file():
 print('native loader + text_to_speech tool: PASS')
 '''
     # Never inherit real API keys or HOME credential stores into the subprocess.
-    env = {k: v for k, v in os.environ.items() if 'KEY' not in k and 'TOKEN' not in k and 'SECRET' not in k}
-    env.update(HOME=str(tmp_path), HERMES_HOME=str(home), PYTHONPATH=HERMES)
     for name in ('PERSONAL', 'TEAM', 'CN_PERSONAL', 'CN_TEAM'):
         env[f'ALIBABA_TOKEN_PLAN_{name}_API_KEY'] = 'synthetic'
     proc = subprocess.run([sys.executable, '-c', code, str(tmp_path / 'out.mp3'), str(fixture)], env=env, cwd=HERMES, capture_output=True, text=True, timeout=60)

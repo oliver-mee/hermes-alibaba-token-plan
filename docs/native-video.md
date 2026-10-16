@@ -1,12 +1,12 @@
 # Native video (experimental)
 
-The independent `alibaba-token-plan-video` backend uses Hermes's normal
+The video backend in `alibaba-token-plan-media` uses Hermes's normal
 `video_generate` tool. Chat profiles, names, credentials and defaults are unchanged.
 Requires Hermes v0.22.0 or newer with `VideoGenProvider`, secret scopes and safe
 `save_url_video`. Chat retains its existing v0.18.2–v0.19.0 contract.
 Installation copies files only: it neither enables the plugin nor selects a provider.
 
-After `./install.sh`, explicitly add `alibaba-token-plan-video` to your existing
+After `./install.sh`, explicitly add `alibaba-token-plan-media` to your existing
 `plugins.enabled` list. Preserve the other entries. Select in `hermes tools` or configure:
 
 ```yaml

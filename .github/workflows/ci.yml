@@ -39,13 +39,13 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install test dependencies
-        run: python -m pip install -r requirements-dev.txt
+        run: python -m pip install -r requirements-dev.txt "websockets>=14,<15"
       - name: Run standalone contract and installer tests
-        run: python -m pytest tests/test_profiles.py tests/test_installer.py tests/test_pr_policy.py tests/test_readme_in_sync.py tests/test_native_video.py -q
+        run: python -m pytest -q
       - name: Run syntax and compile checks
         run: |
           bash -n install.sh
-          python -m compileall -q alibaba-token-plan video-gen tests
+          python -m compileall -q alibaba-token-plan alibaba-token-plan-media tests scripts
           git show --check --oneline --no-renames HEAD
 
   hermes-compatibility:
@@ -81,8 +81,8 @@ jobs:
           HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
         run: python -m pytest tests/test_current_hermes_integration.py -q
 
-  native-video:
-    name: Native video (${{ matrix.os }}, Python ${{ matrix.python }})
+  native-media:
+    name: Native media (${{ matrix.os }}, Python ${{ matrix.python }}, websockets ${{ matrix.websockets_major }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
@@ -91,10 +91,13 @@ jobs:
         include:
           - os: ubuntu-latest
             python: "3.11"
+            websockets_major: "14"
           - os: ubuntu-latest
             python: "3.13"
+            websockets_major: "16"
           - os: macos-latest
             python: "3.11"
+            websockets_major: "16"
     steps:
       - name: Check out plugin
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -110,8 +113,8 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Install test dependencies
         # See existing current-main lane for the upstream ruamel declaration gap.
-        run: python -m pip install -e ./hermes-agent -r requirements-dev.txt ruamel.yaml
-      - name: Native discovery and tool dispatch with mocked HTTP
+        run: python -m pip install -e ./hermes-agent -r requirements-dev.txt ruamel.yaml rich requests python-dotenv "websockets~=${{ matrix.websockets_major }}.0"
+      - name: Combined discovery, native dispatch and lifecycle tests
         env:
           HERMES_AGENT_REPO: ${{ github.workspace }}/hermes-agent
-        run: python -m pytest tests/test_native_video_integration.py -q
+        run: python -m pytest -q

@@ -42,9 +42,7 @@ KEYS = ("QWEN_TOKEN_PLAN_API_KEY", "BAILIAN_TOKEN_PLAN_API_KEY",
 
 
 def catalogue():
-    path = Path(__file__).resolve().parent.parent / "model-providers" / "alibaba-token-plan" / "fallback_models.py"
-    if not path.is_file():  # source checkout, not the installed layout
-        path = Path(__file__).resolve().parent.parent / "alibaba-token-plan" / "fallback_models.py"
+    path = Path(__file__).resolve().parent.parent / "fallback_models.py"
     spec = importlib.util.spec_from_file_location("token_plan_asr_catalogue", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)

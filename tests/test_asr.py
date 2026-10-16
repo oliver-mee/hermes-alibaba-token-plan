@@ -25,7 +25,7 @@ def asr(monkeypatch):
     }
     for name, module in modules.items():
         monkeypatch.setitem(sys.modules, name, module)
-    spec = importlib.util.spec_from_file_location("asr_test", ROOT / "alibaba-token-plan-asr/provider.py")
+    spec = importlib.util.spec_from_file_location("asr_test", ROOT / "alibaba-token-plan-media/asr/provider.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -173,7 +173,7 @@ def test_legacy_first_key_and_unknown_extra(asr, audio, monkeypatch):
 
 
 def test_old_host_registration_does_not_import_native_api(caplog):
-    spec = importlib.util.spec_from_file_location("old_host_asr", ROOT / "alibaba-token-plan-asr/__init__.py")
+    spec = importlib.util.spec_from_file_location("old_host_asr", ROOT / "alibaba-token-plan-media/asr/__init__.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     module.register(object())

@@ -9,9 +9,9 @@ Native contract tests ran against v0.22.0 and the current installed checkout on
 2026-10-16. Other releases/platforms require CI validation.
 
 Run `./install.sh`, then `./install.sh --verify`. The additive directory
-`plugins/alibaba-token-plan-tts` is an ordinary plugin, separate from the legacy
+`plugins/alibaba-token-plan-media` is an ordinary plugin, separate from the legacy
 `plugins/model-providers/alibaba-token-plan` chat loader. Explicitly enable
-`alibaba-token-plan-tts` in your existing `plugins.enabled` list. Preserve every
+`alibaba-token-plan-media` in your existing `plugins.enabled` list. Preserve every
 other enabled entry. Select one speech provider in your existing configuration:
 
 ```yaml
@@ -119,8 +119,8 @@ Rollback: disable this plugin or restore the previous speech provider selection.
 `./install.sh --uninstall` moves this backend and the chat plugin to recovery
 backups under `plugins/model-providers/.backups`; it preserves config and sibling
 media plugins. To roll back only TTS, disable it and restore its backed-up
-folder manually. This PR is plan PR2: integrate after video PR1 and reconcile
-installer changes additively; no video logic is required. ASR remains separate.
+folder manually. The combined media package includes video, image, TTS and ASR. See the shared
+[installation and rollback guide](installation.md) when moving from preview plugins.
 
 ## Validation and proposed live budget
 

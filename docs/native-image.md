@@ -40,16 +40,17 @@ a new model family.
 
 ## Install and configure
 
-`./install.sh` installs chat and `image-gen/alibaba-token-plan-image/` into the
+`./install.sh` installs chat and `alibaba-token-plan-media/` into the
 corresponding Hermes plugin directories. It copies files only. `--verify` checks
 both, and `--uninstall` moves both to recovery backups. Previous versions stay
-in each category's `.backups/` directory. Existing sibling media plugins and
-configuration files remain untouched. To roll back, stop using the image
+in the respective plugin roots' `.backups/` directories. Legacy preview media
+plugins must be migrated explicitly before installation; unrelated plugins and
+configuration remain untouched. See [migration](installation.md). To roll back, stop using the image
 selection, restore the previous chat/plugin directories from these backups and
 restore the previous provider selection manually. Existing image artifacts are
 not deleted by uninstall.
 
-Enable the backend explicitly with `hermes plugins enable image_gen/alibaba-token-plan-image`.
+Enable the backend explicitly with `hermes plugins enable alibaba-token-plan-media`.
 Then select one of these providers in `hermes tools` (Image Generation), or edit
 your profile's configuration:
 

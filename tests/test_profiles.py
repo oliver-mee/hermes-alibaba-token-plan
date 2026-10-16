@@ -405,10 +405,10 @@ def _read_manifest():
     return scalars, tags
 
 
-def test_single_manifest_is_version_1_5_5():
+def test_chat_manifest_matches_release_version():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "1.5.6"
+    assert scalars["version"] == "1.6.0"
 
 
 def test_manifest_declares_v2_metadata():

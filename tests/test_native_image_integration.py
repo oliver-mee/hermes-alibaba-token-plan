@@ -19,7 +19,7 @@ def test_native_registration_dispatch_and_profiles(tmp_path):
     installed = subprocess.run(["bash", str(ROOT / "install.sh")], env=env, text=True,
                                capture_output=True, timeout=30)
     assert installed.returncode == 0, installed.stderr
-    config = ("plugins:\n  enabled: [image_gen/alibaba-token-plan-image]\n"
+    config = ("plugins:\n  enabled: [alibaba-token-plan-media]\n"
               "image_gen:\n  provider: alibaba-token-plan\n  model: wan2.7-image\n")
     (home / "config.yaml").write_text(config)
     probe = r'''
@@ -114,7 +114,7 @@ finally:
 own_home = get_hermes_home()
 config_path = own_home / "config.yaml"
 original_config = config_path.read_text()
-config_path.write_text("plugins:\n  enabled: [image_gen/alibaba-token-plan-image]\n"
+config_path.write_text("plugins:\n  enabled: [alibaba-token-plan-media]\n"
                        "image_gen:\n  provider: alibaba-token-plan-team\n  model: qwen-image-2.0\n")
 token = set_secret_scope({"ALIBABA_TOKEN_PLAN_TEAM_API_KEY": "synthetic-team-key"})
 try:

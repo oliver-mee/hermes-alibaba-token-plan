@@ -1,12 +1,20 @@
 # Changelog
 
-## Unreleased — native video
+## 1.6.0
 
-- Bound video submission response reads as well as polling; an interrupted or timed-out submission is never retried.
-
-- Add an opt-in native Token Plan video backend, safe async lifecycle, installer and offline contract tests.
-- Add model-specific picker details, Hermes stop handling, shorter optional polling limits and bounded transient task-read recovery without retrying submission.
-- Experimental: live generation and credit deductions have not been verified; see docs/native-video.md.
+- Add opt-in native video, image generation/editing, whole-file TTS and file ASR
+  through Hermes's existing tools and voice pipeline. Media requires v0.22.0+;
+  existing chat compatibility and provider/credential aliases remain.
+- Package chat and combined media as self-contained native catalog components,
+  with a release pack pinning both to one reviewed commit.
+- Reconcile shell installation, verification and removal into one transaction
+  with recovery backups; detect mixed native/shell ownership and preview plugins.
+- Preserve scoped regional/tier credentials, exact model selection, safe bounded
+  input/artifact handling, cancellation and deadlines. Never automatically retry
+  ambiguous paid submissions; PCM/realtime calling remain disabled.
+- Add combined offline discovery/dispatch, package lifecycle, rollback, privacy,
+  catalogue and release-asset checks. See docs/validation.md for actual results;
+  live acceptance and credit metering are separate gates, not implied by tests.
 
 ## 1.5.6
 

@@ -15,7 +15,7 @@ import types
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-PLUGIN = ROOT / "image-gen/alibaba-token-plan-image"
+PLUGIN = ROOT / "alibaba-token-plan-media/image"
 PNG = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6d8sAAAAASUVORK5CYII=")
 URL = "https://example.com/image.png"
 

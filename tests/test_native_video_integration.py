@@ -19,7 +19,7 @@ def test_native_plugin_install_discovery_dispatch(tmp_path):
                HERMES_NATIVE_TEST="1", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1")
     installed = subprocess.run(["bash", str(ROOT / "install.sh")], env=env, capture_output=True, text=True)
     assert installed.returncode == 0, installed.stderr
-    (home / "config.yaml").write_text("plugins:\n  enabled: [video_gen/alibaba-token-plan-video]\nvideo_gen:\n  provider: alibaba-token-plan\n  model: happyhorse-1.1-t2v\n")
+    (home / "config.yaml").write_text("plugins:\n  enabled: [alibaba-token-plan-media]\nvideo_gen:\n  provider: alibaba-token-plan\n  model: happyhorse-1.1-t2v\n")
     probe = '''
 import socket
 def blocked(*args, **kwargs):

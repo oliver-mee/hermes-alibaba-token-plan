@@ -1,6 +1,0 @@
-name: alibaba-token-plan-image
-version: 0.1.0
-description: "Opt-in Token Plan image generation and editing. Gateway inference unverified."
-author: Oliver Mee
-kind: backend
-requires_hermes: ">=0.22.0"
