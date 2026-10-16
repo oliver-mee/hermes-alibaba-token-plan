@@ -7,7 +7,6 @@ The probe uses synthetic credentials and replaces the network catalogue call.
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 import sys
 import textwrap
@@ -28,6 +27,12 @@ if not HERMES_AGENT_REPO or not Path(HERMES_AGENT_REPO).is_dir():
 
 _PROBE = r'''
 import os
+import socket
+
+def blocked(*args, **kwargs):
+    raise AssertionError("Offline integration attempted a socket connection")
+socket.socket.connect = blocked
+socket.create_connection = blocked
 
 from agent.auxiliary_client import _get_aux_model_for_provider
 from agent.model_metadata import _infer_provider_from_url
@@ -258,9 +263,9 @@ def test_hermes_discovery_and_runtime(tmp_path: Path) -> None:
     plugin_home = tmp_path / "hermes-home"
     plugin_dir = plugin_home / "plugins" / "model-providers"
     plugin_dir.mkdir(parents=True)
-    shutil.copytree(REPO / "alibaba-token-plan", plugin_dir / "alibaba-token-plan")
 
-    env = os.environ.copy()
+    env = {key: os.environ[key] for key in ("PATH", "LANG", "SYSTEMROOT") if key in os.environ}
+    env["HOME"] = str(tmp_path)
     env["HERMES_HOME"] = str(plugin_home)
     env["PYTHONPATH"] = str(hermes_repo)
     for name in (
@@ -274,6 +279,9 @@ def test_hermes_discovery_and_runtime(tmp_path: Path) -> None:
     ):
         env.pop(name, None)
 
+    installed = subprocess.run(["bash", str(REPO / "install.sh")], env=env,
+                               text=True, capture_output=True, timeout=30)
+    assert installed.returncode == 0, installed.stderr
     proc = subprocess.run(
         [sys.executable, "-c", textwrap.dedent(_PROBE)],
         cwd=hermes_repo,

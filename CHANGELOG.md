@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Enforce image transfer deadlines and interruption at chunk/EOF boundaries; reject late task success and changing local source files.
+
+- Add an opt-in native `ImageGenProvider` backend for four Token Plan region/tier
+  profiles, preserving chat and active defaults. Support eligible Qwen Image 2.0
+  and Wan 2.7 exact IDs, editing/reference inputs, bounded async Wan jobs and
+  profile-local image artifacts. Token Plan image inference remains unverified.
+- Install, verify, back up and uninstall the image backend with chat. Preserve
+  native backend licence attribution and add offline real-Hermes dispatch tests.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat

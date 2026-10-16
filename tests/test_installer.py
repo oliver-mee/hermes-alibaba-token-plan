@@ -137,3 +137,68 @@ def test_relative_hermes_home_is_normalized(tmp_path: Path):
 
     assert installed.returncode == 0, installed.stderr
     assert (plugin_root(home) / "alibaba-token-plan" / "__init__.py").is_file()
+
+
+def test_native_image_upgrade_verify_uninstall_and_defaults(tmp_path):
+    home = tmp_path / "hermes"
+    home.mkdir()
+    config = home / "config.yaml"
+    original = "model: existing-chat\nimage_gen:\n  provider: existing-image\n"
+    config.write_text(original)
+    target = home / "plugins/image_gen/alibaba-token-plan-image"
+    # Existing chat-only installation (v1.5.6 layout) and sibling providers.
+    chat = plugin_root(home) / "alibaba-token-plan"
+    chat.mkdir(parents=True)
+    (chat / "old-marker").write_text("v1.5.6")
+    sibling = home / "plugins/video_gen/other-provider"
+    sibling.mkdir(parents=True)
+    (sibling / "marker").write_text("preserve")
+    assert run_installer(home).returncode == 0
+    assert run_installer(home, "--verify").returncode == 0
+    assert target.is_dir() and (target / "LICENSE").is_file()
+    assert not list(target.rglob("__pycache__"))
+    (target / "media.py").write_text("# stale")
+    assert run_installer(home, "--verify").returncode != 0
+    assert run_installer(home).returncode == 0
+    backups = target.parent / ".backups"
+    assert list(backups.glob("alibaba-token-plan-image.*"))
+    assert run_installer(home, "--uninstall").returncode == 0
+    assert not target.exists() and not chat.exists()
+    assert config.read_text() == original and (sibling / "marker").read_text() == "preserve"
+
+
+def test_image_failure_rolls_back_chat_and_image(tmp_path):
+    home = tmp_path / "hermes"
+    assert run_installer(home).returncode == 0
+    image = home / "plugins/image_gen/alibaba-token-plan-image"
+    chat = plugin_root(home) / "alibaba-token-plan"
+    (image / "old-marker").write_text("image")
+    (chat / "old-marker").write_text("chat")
+    fake_bin = tmp_path / "bin"
+    fake_bin.mkdir()
+    cmp = fake_bin / "cmp"
+    cmp.write_text('#!/bin/sh\ncase "$*" in *media.py*) exit 1;; esac\nexec /usr/bin/cmp "$@"\n')
+    cmp.chmod(0o755)
+    result = run_installer(home, env={"PATH": f"{fake_bin}:{os.environ['PATH']}"})
+    assert result.returncode != 0
+    assert (image / "old-marker").read_text() == "image"
+    assert (chat / "old-marker").read_text() == "chat"
+
+
+def test_image_symlink_destinations_and_installed_files_rejected(tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    for suffix in ("plugins/image_gen", "plugins/image_gen/.backups",
+                   "plugins/image_gen/alibaba-token-plan-image"):
+        home = tmp_path / suffix.replace("/", "-")
+        target = home / suffix
+        target.parent.mkdir(parents=True)
+        target.symlink_to(outside)
+        assert run_installer(home).returncode == 2
+        assert not list(outside.iterdir())
+    home = tmp_path / "installed"
+    assert run_installer(home).returncode == 0
+    file = home / "plugins/image_gen/alibaba-token-plan-image/media.py"
+    file.unlink()
+    file.symlink_to(outside / "not-source")
+    assert run_installer(home, "--verify").returncode != 0
