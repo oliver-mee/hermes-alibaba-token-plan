@@ -79,7 +79,8 @@ for name in ('alibaba-token-plan', 'alibaba-token-plan-team', 'alibaba-token-pla
     assert result['success'], result
     params = ws.sent[0]['payload']['parameters']
     assert params['voice'] == 'longanlufeng' and params['rate'] == 1.25
-    assert ('qianwenaiapi.com' in connect.call_args.args[0]) == ('-cn' in name)
+    host = 'token-plan.maas.qianwenaiapi.com' if '-cn' in name else 'token-plan.maas.qwencloudapi.com'
+    assert connect.call_args.args[0] == f'wss://{host}/api-ws/v1/inference'
     assert ws.closed
 # The same native dispatcher backs automatic replies and per-sentence CLI/Desktop audio.
 if Path(sys.argv[2]).is_file():

@@ -150,7 +150,8 @@ def test_native_metadata_is_local_and_model_specific(provider, monkeypatch):
             assert all(v['language'] == 'zh, en' for v in p.list_voices())
             setup = p.get_setup_schema()
             assert setup['env_vars'][0]['key'] == p.key_names[-1]
-            assert ('qwencloud.com' in setup['env_vars'][0]['url']) == (region == 'global')
+            expected_url = 'https://www.qwencloud.com/' if region == 'global' else 'https://www.qianwenai.com/'
+            assert setup['env_vars'][0]['url'] == expected_url
     # A future catalogue addition must not inherit this model's voices/protocol.
     monkeypatch.setattr(provider, '_models', lambda: [('unimplemented-tts', 'tts', ('personal',), ('global',))])
     assert provider.TokenPlanTTSProvider().list_models() == []
