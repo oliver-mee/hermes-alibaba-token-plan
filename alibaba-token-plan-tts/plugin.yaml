@@ -1,0 +1,11 @@
+name: alibaba-token-plan-tts
+version: 0.1.0
+description: Native Token Plan whole-file speech synthesis for Hermes
+manifest_version: 2
+api_version: 1
+requires_hermes: ">=0.22.0"
+license: MIT
+author: Oliver Mee
+python_dependencies:
+  - websockets>=14,<17
+tags: [tts, alibaba, token-plan, qwen]
