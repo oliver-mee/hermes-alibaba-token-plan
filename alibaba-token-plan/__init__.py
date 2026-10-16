@@ -17,6 +17,27 @@ from typing import Any
 from providers import register_provider
 from providers.base import ProviderProfile
 
+# Native and legacy shell installation use different discovery locations.
+# Refuse an ambiguous duplicate instead of silently overriding another copy.
+def _check_install_location():
+    from pathlib import Path
+    here = Path(__file__).resolve().parent
+    if here.name == "alibaba-token-plan-provider":
+        root = here.parent
+    elif here.name == "alibaba-token-plan" and here.parent.name == "model-providers":
+        root = here.parent.parent
+    elif here.name == "alibaba-token-plan" and here.parent.name == "plugins":
+        root = here.parent
+    else:
+        return  # source checkout or an explicitly named custom package
+    locations = (root / "model-providers/alibaba-token-plan",
+                 root / "alibaba-token-plan-provider", root / "alibaba-token-plan")
+    if any(other != here and (other.exists() or other.is_symlink()) for other in locations):
+        raise RuntimeError("Duplicate Token Plan chat installation; follow the documented shell/native migration before loading")
+
+
+_check_install_location()
+
 # `supports_prompt_cache_key` was added to ProviderProfile in a later Hermes than
 # the versions some users run (the compat matrix tests v0.18.2 and v0.19.0,
 # whose ProviderProfile.__init__ predates it). Passing the kwarg unconditionally

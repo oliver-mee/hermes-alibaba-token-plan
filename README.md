@@ -4,7 +4,9 @@
 [![Release](https://img.shields.io/github/v/release/oliver-mee/hermes-alibaba-token-plan)](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Token Plan (Qwen Cloud is an alternate console view of the same plan, not a separate product).
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) integration for Alibaba Token Plan: chat plus opt-in native image, video, speech synthesis and file transcription. Qwen Cloud is an alternate console view of the same plan, not a separate product.
+
+The release contains two coordinated components: the backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. Live media acceptance remains pending; see [validation and limits](docs/validation.md).
 
 One installed plugin registers four providers, one per region and tier, because the two
 tiers have different catalogues and the `sk-sp-` key prefix is identical for both, so the
@@ -25,7 +27,10 @@ Completions transport.
 
 ## Requirements
 
-- Hermes Agent v0.18.2 through v0.19.0
+- Chat: Hermes Agent v0.18.2/v0.19.0 compatibility points, plus v0.22.0
+- Native media and installation packs: Hermes Agent v0.22.0+
+- Media dependencies: `httpx>=0.28,<0.29`, `websockets>=14,<17`
+- Voice-note conversion/delivery: existing ffmpeg and ffprobe when required
 - Python 3.11 through 3.13
 - Linux or macOS
 
@@ -35,34 +40,47 @@ supported contract.
 
 ## Install
 
+Download `hermes-pack.yaml` from the selected [GitHub release](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases). Review the two source pins, then run:
+
+```bash
+hermes plugins pack show ./hermes-pack.yaml
+hermes plugins pack install ./hermes-pack.yaml
+```
+
+Hermes asks for consent interactively and records each component's provenance.
+Before migrating an existing installation, follow [the preflight and backup steps](docs/installation.md).
+The pack installs chat and media as separate pinned plugins; it is not an atomic
+multi-plugin update. A partial failure leaves individually completed installs
+in place. Resolve the reported failure before continuing; do not bypass guards.
+The pack contains no keys and selects no default provider. After its review and
+confirmation, Hermes enables the installed components using its normal consent
+flow. Configure the desired native provider separately. When none is configured,
+Hermes may choose an available enabled backend automatically; an existing chat
+key can make Personal media available. Set explicit providers before using media,
+or disable `alibaba-token-plan-media` if you want chat only. Installation itself
+does not submit generation requests.
+Only the account/region/tier whose credential you configure can be selected.
+
+For a tagged source checkout, or older chat-only Hermes:
+
 ```bash
 git clone https://github.com/oliver-mee/hermes-alibaba-token-plan
 cd hermes-alibaba-token-plan
 git checkout <release-tag>
 ./install.sh
-```
-
-Choose the latest stable tag from
-[Releases](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases).
-Installing a tagged release is recommended; `main` is the next-release branch.
-
-The installer copies `alibaba-token-plan/` to:
-
-```text
-${HERMES_HOME:-~/.hermes}/plugins/model-providers/
-```
-
-That directory registers all four providers. During upgrade, the installer backs up and removes the legacy standalone `alibaba-token-plan-cn/` directory so it cannot register a second China profile and override this one.
-
-Installed files and previous versions are preserved under `plugins/model-providers/.backups/`.
-
-```bash
 ./install.sh --verify
-./install.sh
-./install.sh --uninstall
 ```
 
-The installer rejects symlinked plugin and backup destinations.
+The shell installer installs chat under `plugins/model-providers/alibaba-token-plan`
+and media under `plugins/alibaba-token-plan-media` in the selected
+`${HERMES_HOME:-~/.hermes}`. It stages and verifies the complete package before
+publication, preserves recovery backups, and restores the previous state on a
+failed install. It never enables plugins, installs dependencies or changes defaults.
+Older Hermes can retain chat while leaving media disabled.
+
+Use `./install.sh --uninstall` for shell-installed files. Use Hermes's native
+`plugins update`/`plugins remove` commands for native installations. Do not mix
+native and shell ownership; see [migration and rollback](docs/installation.md).
 
 ## Credentials
 
@@ -162,7 +180,11 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 The generated `MEDIA_MODELS` metadata in `fallback_models.py` records the plan's
 non-chat models alongside the chat lists. These are not chat-picker entries:
 `wan3.0-video`, for example, uses asynchronous video synthesis, not Chat
-Completions. This provider does not implement media job submission or polling.
+Completions. The combined media component implements native image generation/editing,
+asynchronous video, whole-file speech and synchronous file transcription.
+See [image](docs/native-image.md), [video](docs/native-video.md),
+[TTS](docs/native-tts.md) and [ASR](NATIVE-ASR.md) for explicit configuration,
+implemented subsets and evidence limits. Realtime calling and PCM streaming remain disabled.
 See the [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 for the per-model endpoints, rates and dated entitlement evidence. Listing
 entitlement does not establish successful inference or a measured credit charge.
@@ -180,6 +202,15 @@ entitlement does not establish successful inference or a measured credit charge.
 - `happyhorse-1.1-r2v` (video; team, personal; global, cn)
 - `wan3.0-video` (video; team, personal; global, cn)
 <!-- END GENERATED -->
+
+## Native file transcription (opt-in)
+
+The installer also packages a native `TranscriptionProvider` for
+`qwen-audio-3.0-asr-flash`. It requires Hermes v0.22.0+, explicit enablement and
+STT selection; installation leaves existing defaults unchanged. It uses synchronous
+multimodal HTTP, with streaming disabled. Historical Global Personal success is
+not proof of current entitlement or support for Team/China.
+See [setup, safety, evidence and pending live acceptance](NATIVE-ASR.md).
 
 ## Thinking behaviour
 
