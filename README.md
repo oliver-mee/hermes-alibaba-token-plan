@@ -123,9 +123,9 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
 <!-- BEGIN GENERATED:tier-summary -->
-- Personal keys currently resolve to 11 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to 18 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- If discovery fails or no key is configured, the Personal providers use the Personal list of 11 as the offline fallback; the Team providers fall back to the Team list of 18.
+- Personal keys currently resolve to 12 chat models.
+- Team keys currently resolve to 19 chat models.
+- If discovery fails or no key is configured, the Personal providers use the Personal list of 12 as the offline fallback; the Team providers fall back to the Team list of 19.
 <!-- END GENERATED -->
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
@@ -134,11 +134,16 @@ from catalogue rows marked `status: unlisted`; it is reserved for models proven
 callable despite being absent from `/models`. Update it by regenerating upstream
 and copying the file over, never by hand-editing the tuples.
 
+The current export follows the public wiki's
+[2026-10-20 snapshot](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/3dd82cea88b19c436d5c11a622980c972a6ba1c4/data/models.json).
+It includes `deepseek-v4.1-flash-1017` in both chat tiers and has no current
+unlisted chat exceptions. `deepseek-v4-pro-0813` is listed again; its older
+absence observations are historical.
+
 `supports_health_check` is enabled so Hermes can check endpoint reachability, but
 `GET /models` is not proof that every exact-ID model is listed or that a lapsed
-subscription can infer. `deepseek-v4-pro-0813` is the measured exception here:
-it returns HTTP 200 with output on both Team and Personal despite being absent
-from discovery (Team use reported by the operator; Personal probe 2026-08-31).
+subscription can infer. Historical exact-ID inference and current listing
+evidence remain separate from current inference acceptance.
 
 ### Personal chat catalogue and offline fallback
 
@@ -152,8 +157,9 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 7. `deepseek-v4-pro-0813`
 8. `deepseek-v4-flash-0731`
 9. `deepseek-v4.1-flash`
-10. `glm-5.2`
-11. `glm-5.3`
+10. `deepseek-v4.1-flash-1017`
+11. `glm-5.2`
+12. `glm-5.3`
 <!-- END GENERATED -->
 
 ### Team chat catalogue
@@ -169,14 +175,15 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 8. `deepseek-v4-pro-0813`
 9. `deepseek-v4-flash-0731`
 10. `deepseek-v4.1-flash`
-11. `kimi-k2.7-code`
-12. `kimi-k2.6`
-13. `kimi-k2.5`
-14. `glm-5.2`
-15. `glm-5.3`
-16. `glm-5.1`
-17. `glm-5`
-18. `MiniMax-M2.5`
+11. `deepseek-v4.1-flash-1017`
+12. `kimi-k2.7-code`
+13. `kimi-k2.6`
+14. `kimi-k2.5`
+15. `glm-5.2`
+16. `glm-5.3`
+17. `glm-5.1`
+18. `glm-5`
+19. `MiniMax-M2.5`
 <!-- END GENERATED -->
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.

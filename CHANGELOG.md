@@ -9,6 +9,10 @@ to Hermes's backend fallback. Review provider selection and installation ownersh
 before upgrading; see [migration and rollback](docs/installation.md). Existing
 chat provider names, aliases, endpoints and credential namespaces remain compatible.
 
+- Resolve auxiliary chat catalogue credentials through Hermes's active profile
+  scope and partition cached selections by credential and endpoint, preventing
+  one multiplexed profile from borrowing another profile's process credentials
+  or cached auxiliary model.
 - Add opt-in native video, image generation/editing, whole-file TTS and file ASR
   through Hermes's existing tools and voice pipeline. Media requires v0.22.0+;
   existing chat compatibility and provider/credential aliases remain.

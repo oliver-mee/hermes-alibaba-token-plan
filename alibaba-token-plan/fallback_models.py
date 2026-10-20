@@ -16,7 +16,7 @@
 # Always handle 'Access to model denied' at call time regardless: a LAPSED subscription
 # still lists its full catalogue on /models and then denies every completion.
 
-# PERSONAL: 11 chat models
+# PERSONAL: 12 chat models
 PERSONAL_MODELS = (
     "qwen3.8-max",
     "qwen3.8-flash",
@@ -27,11 +27,12 @@ PERSONAL_MODELS = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017",
     "glm-5.2",
     "glm-5.3",
 )
 
-# TEAM: 18 chat models
+# TEAM: 19 chat models
 TEAM_MODELS = (
     "qwen3.8-max",
     "qwen3.8-flash",
@@ -43,6 +44,7 @@ TEAM_MODELS = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017",
     "kimi-k2.7-code",
     "kimi-k2.6",
     "kimi-k2.5",
@@ -59,7 +61,6 @@ TEAM_MODELS = (
 # discovery omits these ids regardless). The plugin must keep offering them
 # at call time even though live discovery never returns them.
 UNLISTED_MODELS = (
-    "deepseek-v4-pro-0813",
 )
 
 # Media entitlement metadata, NOT Chat Completions picker entries.

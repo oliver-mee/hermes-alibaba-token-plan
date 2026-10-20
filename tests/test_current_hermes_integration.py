@@ -51,6 +51,7 @@ personal = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017",
     "glm-5.2",
     "glm-5.3",
 )
@@ -65,6 +66,7 @@ team = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017",
     "kimi-k2.7-code",
     "kimi-k2.6",
     "kimi-k2.5",
@@ -177,6 +179,9 @@ try:
     assert "deepseek-v4-pro-0813" in picker
 
     ProviderProfile.fetch_models = lambda self, **kwargs: ["unknown", "wan2.7-image"]
+    # No current unlisted-chat exception survives a successful unknown-only
+    # response; Hermes may still choose its normal complete offline fallback.
+    assert global_profile.fetch_models(api_key="synthetic") == []
     picker = provider_model_ids("alibaba-token-plan")
     assert "deepseek-v4-pro-0813" in picker
     assert "unknown" not in picker

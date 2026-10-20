@@ -128,14 +128,11 @@ class QwenTokenPlanProfile(ProviderProfile):
         fails. A successful response containing no recognised chat IDs returns
         an empty list instead of promoting unknown gateway entries.
 
-        UNLISTED_MODELS are kept even though live discovery never returns them:
-        the gateway answers these ids with HTTP 200 by exact id but
-        deliberately omits them from /models (measured 2026-08-18 and
-        2026-08-31 — deepseek-v4-pro-0813 serves on both tiers while absent
-        from the listing). Dropping them makes selectable, working models
-        vanish from the picker, so they are appended when live discovery
-        succeeds. They are still gated by the per-tier catalogue: a team-only
-        unlisted id never appears on a personal profile.
+        Evidence-backed UNLISTED_MODELS remain selectable when a successful
+        discovery response omits them, in canonical per-tier order. The
+        current snapshot has no unlisted chat IDs: deepseek-v4-pro-0813 is
+        listed again. Future exceptions are still gated by the per-tier
+        catalogue, so a team-only unlisted ID cannot appear on Personal.
         """
         live = super().fetch_models(
             api_key=api_key,
@@ -291,9 +288,8 @@ alibaba_token_plan = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
@@ -321,9 +317,8 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
@@ -360,9 +355,8 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
@@ -393,9 +387,8 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
