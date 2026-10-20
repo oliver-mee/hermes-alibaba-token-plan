@@ -6,6 +6,13 @@ separate evidence. The following checks were performed on 2026-10-20.
 
 ## Reviewed code and offline acceptance
 
+The full default suite on an exact archive of `f981431` passed **392 tests,
+with 8 documented outer native-video skips**, on Linux/Python 3.11 and pinned
+Hermes 0.22.0. This includes all seven real native PM cases with explicitly
+authorised public dependency downloads. Both actual CLI dependency admissions
+also passed on that archive with successful preparation and no failure markers.
+Subsequent validation-text corrections do not alter the tested package files.
+
 Independent critical review of `8c3170d` found no remaining P1/P2 code blocker.
 It challenged and confirmed fixes for scoped auxiliary-chat credentials,
 credential/endpoint cache isolation and canonical catalogue drift. Chat was
@@ -45,8 +52,9 @@ check URLs; a previous green SHA is not evidence for a later change.
 CodeQL treated the ephemeral API-key fingerprint as a password verifier. The
 cache now uses HMAC-SHA256 with a random process-local key and stores no raw
 credential or persistent verifier. An independent review confirmed this is an ephemeral cache identity, not a
-password verifier. [Alert 3](https://github.com/oliver-mee/hermes-alibaba-token-plan/security/code-scanning/3)
-was explicitly triaged as a false positive with that rationale; no scanning
+password verifier. The original SHA-256 [alert 3](https://github.com/oliver-mee/hermes-alibaba-token-plan/security/code-scanning/3)
+and subsequent HMAC [alert 4](https://github.com/oliver-mee/hermes-alibaba-token-plan/security/code-scanning/4)
+were explicitly triaged as false positives with that rationale; no scanning
 rule or branch protection was disabled.
 
 ## Actual live acceptance
