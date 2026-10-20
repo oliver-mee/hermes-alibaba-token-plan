@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.6.0
+## 2.0.0
+
+This major release changes the installation contract from the 1.x chat-only
+distribution to coordinated chat and native media packages. Native pack consent
+enables both components, and an existing chat credential can make media available
+to Hermes's backend fallback. Review provider selection and installation ownership
+before upgrading; see [migration and rollback](docs/installation.md). Existing
+chat provider names, aliases, endpoints and credential namespaces remain compatible.
 
 - Add opt-in native video, image generation/editing, whole-file TTS and file ASR
   through Hermes's existing tools and voice pipeline. Media requires v0.22.0+;

@@ -1,9 +1,23 @@
 # Installation ownership, migration and rollback
 
-Token Plan v1.6.0 ships two self-contained native packages: chat
+Token Plan v2.0.0 ships two self-contained native packages: chat
 (`alibaba-token-plan-provider`) and media (`alibaba-token-plan-media`). A release
 pack pins both to the same full Git commit. Media registers all four native
 backend families, while provider selection remains explicit.
+
+## Upgrading from 1.x
+
+Version 2.0.0 is a major release because installation now coordinates chat and
+native media rather than distributing chat alone. Chat provider names, aliases,
+endpoints and credential namespaces remain compatible; no credential rename is
+required. Native media requires Hermes v0.22.0+, while older supported Hermes
+versions can retain chat through the tagged-source shell installer.
+
+Review the installation owner, preserve configuration and backups, and follow
+the migration steps below before replacing a 1.x installation. Native pack
+consent enables both components; an existing chat credential can make media
+available to Hermes's backend fallback. Set explicit media providers or disable
+`alibaba-token-plan-media` to retain chat-only use.
 
 ## Choose an installation owner
 

@@ -1,8 +1,10 @@
 # Proposed live acceptance gate
 
-Status: **Not run; not authorised by general implementation permission.**
-This document prepares an interactive operator-approved check. It is not a
-script to run unattended. Do not retrieve credentials before approval.
+Status: **Owner authorised the necessary live acceptance checks on 2026-10-20;
+results are recorded separately in validation.md.** The owner also selected
+version 2.0.0 and authorised release after testing. This is an interactive
+check, not an unattended batch. Keep the maximum below and stop on unexpected
+billing or errors.
 
 Use a dedicated temporary Hermes profile with the reviewed package and no
 unrelated hooks/tools. Preserve production defaults. The operator must identify
@@ -24,15 +26,22 @@ result reads per asynchronous job, stopping at five minutes. Use the existing
 native dispatcher for every check. Bound chat/token output and source sizes;
 never run an autonomous agent loop that can create extra paid calls.
 
-## Spend approval required
+## Approved execution bounds
 
-Before the first submission, record the selected accounts, exact endpoints,
-applicable debit rules and an operator-approved hard credit/currency ceiling.
-Current public model cards are not a measured Token Plan credit coefficient;
-PAYG prices cannot be converted into an invented subscription budget. If the
-operator cannot establish that each next request fits the remaining ceiling,
-do not submit it. Stop on the first unexpected error, debit or ambiguous result.
-Never automatically resubmit a POST or repeat an unknown-outcome request.
+The owner authorised the necessary tests after reviewing this proposed maximum
+18-call scope. No numeric credit ceiling was supplied; do not invent one or
+report public PAYG prices as measured Token Plan deductions. Use only the
+personal-estate Global Personal and Team subscriptions through scoped `sk-sp-`
+keys. No PAYG keys, credit purchases, subscription changes or automatic top-ups.
+Current public Token Plan quota documentation says calls are blocked when the
+subscription allowance is exhausted. Record any returned usage/debit, and mark
+unavailable metering explicitly rather than inferring it from token counts.
+
+Submit one case at a time, reserve it in the acceptance ledger before execution,
+and inspect its outcome before the next case. Stop on the first unexpected
+error, debit or ambiguous result. Never automatically resubmit a POST or repeat
+an unknown-outcome request. A definite pre-submission validation failure may be
+fixed offline; any further live submission still counts towards the maximum.
 
 Global host: `token-plan.maas.qwencloudapi.com`. Chat uses
 `/compatible-mode/v1/chat/completions`; image/ASR use their documented native
