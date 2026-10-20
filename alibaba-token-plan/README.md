@@ -4,6 +4,12 @@ Four Hermes chat providers separate Global/China and Personal/Team subscriptions
 with canonical entitlement-aware catalogues, exact-ID unlisted exceptions,
 reasoning controls and legacy credential aliases.
 
+Published following [upstream's standalone-plugin direction](https://github.com/NousResearch/hermes-agent/pull/52915#issuecomment-4976935709),
+this improves the bundled basic Personal profiles using Hermes's supported user-provider
+overrides. It adds explicit Team profiles, current tier-aware discovery, scoped
+credential/cache isolation, model-specific reasoning controls and a lower-cost
+auxiliary model, while preserving existing provider identities and aliases.
+
 This is the chat component of the [Token Plan integration](https://github.com/oliver-mee/hermes-alibaba-token-plan).
 Install it independently or use the coordinated release pack to add native image,
 video, speech and transcription. Native package installation does not run the

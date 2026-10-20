@@ -57,6 +57,23 @@ and subsequent HMAC [alert 4](https://github.com/oliver-mee/hermes-alibaba-token
 were explicitly triaged as false positives with that rationale; no scanning
 rule or branch protection was disabled.
 
+## Desktop backend relay acceptance
+
+The actual Desktop audio routes passed on immutable Hermes 0.22.0 and 0.22.2
+with real plugin discovery, native registries and profile scopes. Only vendor
+HTTP/WebSocket boundaries were mocked; kernel network denial prevented live
+calls. Tests covered voice-config relay classification without client key
+exposure, Ogg upload/transcription, MIME/base64/decoded speech output, profile
+switching and invalid/missing/empty-scope failures.
+
+The actual authenticated `speak-stream` WebSocket also passed: Hermes converts
+the plugin’s whole-file speech into nonempty mono 24 kHz PCM with start/end
+frames. The plugin’s `streams_pcm=False` therefore retains Desktop’s normal
+relay fallback; it does not claim vendor PCM streaming. Live ASR streaming
+correctly reports unavailable and the client retains recorded-file upload.
+These are backend relay observations; physical microphone/speaker use remains
+a separate operator check.
+
 ## Actual live acceptance
 
 Owner-authorised checks used isolated temporary homes, Hermes 0.22.0
@@ -76,8 +93,9 @@ provider defaults and gateway processes were preserved.
 | Personal `wan3.0-video` | Passed | One five-second / 720p request; H264 1280×720 with AAC, 5.038-second container fully decoded and representative frame inspected. |
 | Personal `qwen-audio-3.0-tts-plus` EN/ZH | Passed | `longanlingxin`: “Hello world.”; `longanlufeng`: “你好，世界。” Native delivery produced decoded 48 kHz Opus/Ogg, approximately 1.025 / 1.313 seconds. Raw MP3 delivery and optional speed/volume controls were not live tested. |
 | Personal `qwen-audio-3.0-asr-flash` EN/ZH | Passed | Actual generated Ogg recordings passed the normal local-file conversion/inline Base64 route; both known phrases matched after punctuation/spacing normalisation. This exact unlisted route is inference evidence, not a `/models` inference. |
-| Telegram private delivery | Passed | Existing Hermes native sender delivered both voices, an edited image and an image-to-video clip without warnings. Reused artifacts; no extra inference. |
-| Human playback, incoming Telegram voice event, Hermes Desktop | Not run | Operator playback feedback and actual client/microphone observations remain pending. File/handler tests do not establish physical-device acceptance. |
+| Telegram transport and topic routing | Passed | The initial unthreaded API send was accepted, but the operator reported not receiving it. The same two voices, edited image and video were resent into a dedicated private topic; each returned message reported that topic ID. No additional inference. The operator subsequently confirmed seeing the topic, hearing both known phrases, viewing the edited image and playing the five-second video. |
+| Telegram operator playback | Passed | Operator confirmed English and Chinese “Hello world”, the edited image and the five-second image-to-video in the corrected private topic. |
+| Incoming Telegram microphone event / physical Hermes Desktop | Not run | These device/input observations remain separate from confirmed Telegram playback and native handler/relay tests. |
 | CN / other account and mode combinations | Not run | Outside the approved live scope; remain experimental/unverified. |
 | Exact Token Plan credit debit | Not run | Not exposed by these responses; returned chat usage does not establish subscription debit. No PAYG prices are represented as measured deductions. |
 
@@ -119,7 +137,7 @@ transactional but does not enable providers. Explicit repository pins have
 custom provenance and require explicit re-pin; future community catalogue
 acceptance is a separate upstream maintainer decision.
 
-Release is **pending operator playback/client acceptance and final exact-SHA
-checks**. Team-only image coverage is explicitly unverified.
+Telegram operator playback is **passed**. Release remains pending the final
+physical Desktop observation offered by the operator and final exact-SHA checks. Team-only image coverage is explicitly unverified.
 Do not represent the candidate as published, all-profile functioning or accepted
 by the upstream catalogue. Follow [the release procedure](../RELEASING.md).

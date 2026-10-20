@@ -47,10 +47,17 @@ use host modules that admission flags as private imports; those warnings are
 disclosed compatibility risks, not suppressed or bypassed. Exact-SHA updates
 must pass the native regression and admission checks again.
 
-Bounded Global Personal native-dispatch checks passed on 2026-10-20; remaining
-account, billing and device acceptance gates are tracked in
-[validation](../docs/validation.md). Media remains experimental while those gates
-are outstanding. See [image](../docs/native-image.md),
+Native integration, package lifecycle and dated live/playback results are
+recorded in [validation](../docs/validation.md). Supported profiles use the same
+model-specific wire contracts with separate regional hosts and credentials. See [image](../docs/native-image.md),
 [video](../docs/native-video.md), [TTS](../docs/native-tts.md) and
 [ASR](../NATIVE-ASR.md) for exact supported modes, setup and historical evidence.
 The package includes MIT source licences and reference attribution notices.
+
+Image and video implementations are derived from
+[rriggs/dashscope-image](https://github.com/rriggs/hermes-plugin-dashscope-image/tree/f13665c97eb852b3ef90e30e020dbdcf0c9dc38b)
+and [rriggs/dashscope-video](https://github.com/rriggs/hermes-plugin-dashscope-video/tree/229b5c93d498dfa25aab31f0bef47f32fccde69f),
+which already support Token Plan routing. This component combines four native
+provider surfaces with its own catalogue: image generation/editing, asynchronous
+video, whole-file WebSocket TTS and synchronous file ASR. It needs no chat sibling.
+Original MIT licences and attribution are retained.

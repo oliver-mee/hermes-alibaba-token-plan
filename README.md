@@ -6,13 +6,20 @@
 
 [Hermes Agent](https://github.com/NousResearch/hermes-agent) integration for Alibaba Token Plan: chat plus opt-in native image, video, speech synthesis and file transcription. Qwen Cloud is an alternate console view of the same plan, not a separate product.
 
-Version 2.0.0 contains two coordinated components: the backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. Bounded Global Personal native-dispatch checks passed on 2026-10-20; see [validation and limits](docs/validation.md) for per-model results and remaining account, billing and device gates.
+Version 2.0.0 contains two coordinated components: the improved, backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. See [validation](docs/validation.md) for native integration, package lifecycle and dated live/playback results.
 
 The major version marks the move from the 1.x chat-only distribution to a
 coordinated chat and media installation. Native pack consent enables both
 components, so review [migration and rollback](docs/installation.md) before
 upgrading. Existing chat provider names, aliases, endpoints and credential
 namespaces remain compatible.
+
+The standalone chat provider follows [upstream's direction to publish the Global
+and China integration as a plugin](https://github.com/NousResearch/hermes-agent/pull/52915#issuecomment-4976935709).
+It replaces Hermes's bundled basic Personal profiles through the supported user-provider
+override mechanism and adds explicit Team profiles, current tier-aware catalogues,
+isolated account credentials and discovery caches, model-specific reasoning controls,
+and a lower-cost auxiliary model. Existing provider names and aliases are preserved.
 
 One installed plugin registers four providers, one per region and tier, because the two
 tiers have different catalogues and the `sk-sp-` key prefix is identical for both, so the
