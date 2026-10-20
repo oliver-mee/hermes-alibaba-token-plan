@@ -1,143 +1,86 @@
-# Validation and release gates
+# Validation
 
-Native media is implemented and opt-in. Registration, catalogue discovery,
-static admission, mocked dispatch, real inference and operator playback are
-separate evidence. The following checks were performed on 2026-10-20.
+Validation completed on 2026-10-20. Offline integration, package installation,
+live inference and manual playback were checked separately.
 
-## Reviewed code and offline acceptance
+## Automated checks
 
-The full default suite on an exact archive of `f981431` passed **392 tests,
-with 8 documented outer native-video skips**, on Linux/Python 3.11 and pinned
-Hermes 0.22.0. This includes all seven real native PM cases with explicitly
-authorised public dependency downloads. Both actual CLI dependency admissions
-also passed on that archive with successful preparation and no failure markers.
-Subsequent validation-text corrections do not alter the tested package files.
+The release candidate suite passed **392 tests with 8 documented outer
+native-video skips**, including all seven native package-manager cases.
+The skipped outer cases are covered by real-Hermes subprocess integrations.
+The suite exercises native discovery and dispatch, scoped credentials and
+caches, request contracts, file and URL handling, cancellation, shell rollback,
+installation ownership, native install/update/remove and coordinated packs.
 
-Independent critical review of `8c3170d` found no remaining P1/P2 code blocker.
-It challenged and confirmed fixes for scoped auxiliary-chat credentials,
-credential/endpoint cache isolation and canonical catalogue drift. Chat was
-exercised against Hermes 0.18.2, 0.19.0, 0.22.0, 0.22.2 and current main
-(`781f8bbd`). Media uses Hermes's native registries and ordinary image, video,
-TTS and transcription dispatch; no parallel custom tools or runtime patches.
+Package lifecycle tests allowed public dependency downloads in isolated homes
+and made no inference calls. Provider contract tests used mocked transports and
+network guards. Both components also passed actual native CLI
+`plugins validate <component> --install-deps --json`, including dependency
+preparation. Shell syntax, compilation, generated README and whitespace checks
+passed. Exact commit and CI links are recorded in the release pull request.
 
-- After the process-keyed HMAC cache change, the Python 3.11 / Hermes 0.22.0
-  non-PM suite passed **385 tests, with 8 outer native-video skips**:
-  `python -m pytest -q --ignore=tests/test_native_package.py`. The skipped outer
-  cases are exercised through the real-Hermes subprocess integrations.
-- The independent Python 3.13 current-main review passed **384 tests, 8 skips,
-  1 loopback deselection**, followed by the separate restricted-loopback
-  WebSocket case passing. Four released compatibility snapshots each passed
-  both real chat/scoped-credential integrations. Adversarial scope/cache probes
-  passed on all five host snapshots.
-- An exact `git archive` of `8c3170d` passed all **7 native package tests**:
-  `python -m pytest tests/test_native_package.py -q -ra`. These exercised actual
-  admission, install/update/re-pin/remove, duplicate ownership, media without
-  chat, native pack parsing and partial failure. Public dependency downloads
-  were explicitly allowed for PM lifecycle/pack; no operator credentials or
-  inference were used. This is no-inference acceptance, not strict offline proof.
-- Both actual native CLI `plugins validate <component> --install-deps --json`
-  admissions passed in fresh scratch tooling, with successful dependency
-  preparation and no static-only fallback after a dependency error.
-- Shell rollback, backups, ownership, preview migration, source/path safety and
-  failure injection are covered by the integrated suite. Bash syntax,
-  compilation, generated README synchronisation and whitespace checks passed.
+Chat compatibility was checked against Hermes 0.18.2, 0.19.0, 0.22.0, 0.22.2
+and a dated current-main snapshot. Hosted CI covers Linux/macOS and Python
+3.11/3.13, including native media and package lifecycle checks. Independent
+critical reviews found no remaining substantive code blocker after fixes for
+scoped auxiliary credentials, cache isolation and catalogue drift.
 
-The initial critical-review harness accidentally selected Python 3.14 and
-blocked the legitimate loopback test with its full IP socket guard. Its one
-failure was rerun using supported Python 3.13 and a separate loopback-only guard;
-no source change hid that failure. No-Hermes standalone checks and Linux/macOS
-native/PM/older-chat lanes also run in hosted CI. The PR records exact final
-check URLs; a previous green SHA is not evidence for a later change.
+Desktop audio routes passed on Hermes 0.22.0 and 0.22.2 with native plugin
+loading and profile scopes, mocking only the vendor HTTP/WebSocket boundaries.
+Coverage includes transcription uploads, encoded speech responses, authenticated
+speech relay, profile switching and missing/invalid scopes. Hermes converts
+whole-file speech to mono 24 kHz PCM for its Desktop relay; the provider itself
+does not advertise vendor PCM streaming. File transcription remains available
+when live transcription streaming is unavailable.
 
-CodeQL treated the ephemeral API-key fingerprint as a password verifier. The
-cache now uses HMAC-SHA256 with a random process-local key and stores no raw
-credential or persistent verifier. An independent review confirmed this is an ephemeral cache identity, not a
-password verifier. The original SHA-256 [alert 3](https://github.com/oliver-mee/hermes-alibaba-token-plan/security/code-scanning/3)
-and subsequent HMAC [alert 4](https://github.com/oliver-mee/hermes-alibaba-token-plan/security/code-scanning/4)
-were explicitly triaged as false positives with that rationale; no scanning
-rule or branch protection was disabled.
+## Live and manual checks
 
-## Desktop backend relay acceptance
+Bounded interactive checks used scoped Global subscription credentials and the
+normal Hermes dispatch paths. Media provider code matches the reviewed release
+candidate. No PAYG fallback or ambiguous paid submission retry was used.
 
-The actual Desktop audio routes passed on immutable Hermes 0.22.0 and 0.22.2
-with real plugin discovery, native registries and profile scopes. Only vendor
-HTTP/WebSocket boundaries were mocked; kernel network denial prevented live
-calls. Tests covered voice-config relay classification without client key
-exposure, Ogg upload/transcription, MIME/base64/decoded speech output, profile
-switching and invalid/missing/empty-scope failures.
-
-The actual authenticated `speak-stream` WebSocket also passed: Hermes converts
-the plugin’s whole-file speech into nonempty mono 24 kHz PCM with start/end
-frames. The plugin’s `streams_pcm=False` therefore retains Desktop’s normal
-relay fallback; it does not claim vendor PCM streaming. Live ASR streaming
-correctly reports unavailable and the client retains recorded-file upload.
-These are backend relay observations; physical microphone/speaker use remains
-a separate operator check.
-
-## Actual live acceptance
-
-Owner-authorised checks used isolated temporary homes, Hermes 0.22.0
-(`e06df9c2`), Global subscription-only scoped keys and the normal native
-handlers. Native media source was frozen at `0e83a5a`; its provider Python files
-are byte-identical to `8c3170d`. Later chat-catalogue and cache changes do not
-alter the tested media protocols or model rows. Production installation,
-provider defaults and gateway processes were preserved.
-
-| Check | Status | Observed evidence |
+| Check | Result | Scope |
 |---|---|---|
-| Global Personal chat, `qwen3.7-plus` | Passed | One fixed-answer request, output cap 32 tokens; expected answer received. |
-| Global Team chat, same model | Failed | One `PermissionDeniedError`; precise vendor cause unavailable. No retry and no inference-health conclusion for other Team models. |
-| Personal `wan2.7-image` and `wan2.7-image-pro` | Passed | One generation and one edit per model, `n=1`, 1024×1024. Decoded PNGs visually checked; requested colour changes and retained backgrounds observed. |
-| Team-only `qwen-image-2.0` / `qwen-image-2.0-pro` | Not run | Paused after the unexplained Team chat denial. |
-| Personal HappyHorse 1.1 text/image/reference-to-video | Passed | One request per exact model, five seconds / 720p. H264 1280×720 with AAC, 5.16-second containers fully decoded; representative frames inspected. |
-| Personal `wan3.0-video` | Passed | One five-second / 720p request; H264 1280×720 with AAC, 5.038-second container fully decoded and representative frame inspected. |
-| Personal `qwen-audio-3.0-tts-plus` EN/ZH | Passed | `longanlingxin`: “Hello world.”; `longanlufeng`: “你好，世界。” Native delivery produced decoded 48 kHz Opus/Ogg, approximately 1.025 / 1.313 seconds. Raw MP3 delivery and optional speed/volume controls were not live tested. |
-| Personal `qwen-audio-3.0-asr-flash` EN/ZH | Passed | Actual generated Ogg recordings passed the normal local-file conversion/inline Base64 route; both known phrases matched after punctuation/spacing normalisation. This exact unlisted route is inference evidence, not a `/models` inference. |
-| Telegram transport and topic routing | Passed | The initial unthreaded API send was accepted, but the operator reported not receiving it. The same two voices, edited image and video were resent into a dedicated private topic; each returned message reported that topic ID. No additional inference. The operator subsequently confirmed seeing the topic, hearing both known phrases, viewing the edited image and playing the five-second video. |
-| Telegram operator playback | Passed | Operator confirmed English and Chinese “Hello world”, the edited image and the five-second image-to-video in the corrected private topic. |
-| Incoming Telegram microphone event / physical Hermes Desktop | Not run | These device/input observations remain separate from confirmed Telegram playback and native handler/relay tests. |
-| CN / other account and mode combinations | Not run | Outside the approved live scope; remain experimental/unverified. |
-| Exact Token Plan credit debit | Not run | Not exposed by these responses; returned chat usage does not establish subscription debit. No PAYG prices are represented as measured deductions. |
+| Global Personal chat | Passed | One bounded `qwen3.7-plus` completion. |
+| Global Team chat | Failed | One permission denial; the vendor cause was not exposed. No conclusion is drawn about other Team models. |
+| `wan2.7-image` and `wan2.7-image-pro` | Passed | Generation and editing, one 1024×1024 image per request; outputs decoded and visually checked. |
+| HappyHorse 1.1 text/image/reference-to-video | Passed | Five-second, 720p clips; H264/AAC outputs decoded and frames inspected. |
+| `wan3.0-video` | Passed | Five-second, 720p clip; H264/AAC output decoded and inspected. |
+| English and Chinese TTS | Passed | Model-specific system voices, converted to Ogg/Opus. |
+| English and Chinese file ASR | Passed | Known recordings through native conversion and inline upload. |
+| Telegram delivery and playback | Passed | Topic-routed voice notes, edited image and image-to-video playback. |
+| Hermes Desktop dictation and speech playback | Passed | Manual microphone dictation and native Read aloud in a dedicated test profile. |
+| Incoming Telegram microphone event | Not run | Separate from file transcription and playback checks. |
+| Other account/model combinations | Not run | Includes CN and Team-only Qwen image modes. |
+| Exact subscription credit debit | Not measured | Responses did not expose the debit. |
 
-The completed run used **16 reservations: 14 actual inference requests (13
-successes and one Team denial), plus two definite local pre-POST failures**.
-The four Team-only Qwen image generation/edit cases remain unrun; no further
-provider request is needed for playback. Each inference was submitted separately
-and inspected before the next case.
-The acceptance ledger caps conservative reservations at 18, including definite
-local pre-submission failures. Two harness input/configuration failures occurred
-before any POST: a YAML `n` key interpretation and an unsupported local video
-path. Both were corrected offline, positively identified as unsubmitted and
-explicitly invoked again; their original reservations were retained. No unknown
-or ambiguous paid submission was retried. Team requests remain paused.
+These results establish the tested operations on that date. Optional synthesis
+controls and other account/model combinations retain their offline contract
+coverage; a successful model listing is not inference or billing proof.
 
-See [the authorised execution bounds](live-acceptance.md). Signed artifact URLs,
-task/account identifiers, credentials and raw private evidence are excluded from
-this repository. Successful outputs prove only the tested profile/model/mode on
-that date, not billing, CN or all advertised entitlement.
+## Catalogue, installation and compatibility
 
-## Contracts, admission and release status
-
-The canonical chat snapshot is pinned to the public Token Plan Wiki
+The canonical chat catalogue is pinned to public Token Plan Wiki snapshot
 [`3dd82cea`](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/3dd82cea88b19c436d5c11a622980c972a6ba1c4/data/models.json).
-Generated Personal/Team order and the two self-contained fallback files match.
-Region/tier namespaces and existing chat aliases/endpoints remain compatible.
-ASR intentionally exposes only Global Personal; streaming/realtime calling/PCM
-are not claimed.
+Generated Personal/Team ordering and both self-contained catalogue files match.
+Existing chat names, aliases, endpoints and credential namespaces remain
+compatible. Native ASR currently exposes Global Personal only.
 
-Static admission discloses safety/conversion/cancellation helper imports that
-Hermes classifies as private APIs. These are not runtime monkey patches; retain
-the warnings and recheck pinned/current Hermes after updates. A static
-host-ready verdict does not establish isolated dispatched execution.
+Native admission reports private host-helper imports for existing safety,
+conversion and interruption handling. These compatibility warnings remain
+visible and must be rechecked after host updates. The discovery cache uses a
+process-keyed HMAC identity without storing raw credentials or a persistent
+password verifier; the associated CodeQL findings were reviewed as false
+positives. No scanner rule or branch protection was disabled.
 
-Version 2.0.0 changes the coordinated installation/consent contract. Native pack
-installation is interactive and non-atomic; existing scoped chat keys can make
-enabled media eligible for normal fallback. Shell file installation is
-transactional but does not enable providers. Explicit repository pins have
-custom provenance and require explicit re-pin; future community catalogue
-acceptance is a separate upstream maintainer decision.
+Version 2.0.0 introduces coordinated chat and native media installation. Native
+pack installation is interactive and non-atomic; consent enables both plugins,
+and existing scoped chat credentials can make media eligible for normal
+fallback. Shell installation is transactional and does not enable providers.
+Explicit repository pins require explicit updates. Community catalogue
+admission remains an upstream maintainer decision.
 
-Telegram operator playback is **passed**. Release remains pending the final
-physical Desktop observation offered by the operator and final exact-SHA checks. Team-only image coverage is explicitly unverified.
-Do not represent the candidate as published, all-profile functioning or accepted
-by the upstream catalogue. Follow [the release procedure](../RELEASING.md).
+See [installation and rollback](installation.md), [live-check bounds](live-acceptance.md)
+and [the release procedure](../RELEASING.md). Credentials, personal messages,
+account/task identifiers and private troubleshooting evidence are excluded from
+this repository.
