@@ -7,13 +7,18 @@ It never calls the generic OpenAI `/audio/transcriptions` endpoint or `/models`.
 
 ## Install and configure
 
+ASR ships in the combined 2.0.0 media plugin alongside the chat component.
+Use the [coordinated release pack](docs/installation.md), which enables both
+components after interactive consent, or the shell workflow below.
+
 Run the normal `./install.sh`; it also installs the combined `alibaba-token-plan-media` plugin under
 `${HERMES_HOME:-~/.hermes}/plugins/`. Chat remains under `plugins/model-providers/`.
 Native ASR requires Hermes **v0.22.0 or newer** with
 `register_transcription_provider`, `TranscriptionProvider` and scoped secret lookup.
 Older supported chat versions keep their chat behaviour; the native plugin is
 opt-in and emits an upgrade diagnostic if its registration hook is absent.
-No dependencies, provider selections, keys or defaults are installed or changed.
+The shell installer does not install dependencies or change provider selections,
+keys or defaults.
 
 Set `ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY` using Hermes's normal secret mechanism,
 then explicitly enable and select the plugin. Merge these settings into your
@@ -55,21 +60,26 @@ Global host and does not inherit chat endpoint overrides.
 After explicit configuration, Hermes's normal `transcribe_audio` dispatcher
 serves voice messages and file-based CLI/Desktop dictation. Offline integration
 exercises actual directory-plugin discovery, registry registration, dispatch and
-Ogg/Opus conversion with mocked HTTP. This does **not** establish delivery from a
-real Telegram client or a Desktop relay session; those acceptance checks are pending.
+Ogg/Opus conversion with mocked HTTP. On 2026-10-20, Global Personal live
+transcription through actual Hermes v0.22.0 dispatch returned the exact known
+English and Chinese transcripts from local TTS-generated Ogg/Opus files using
+the inline local-file route. This does not establish actual Telegram microphone
+ingestion or Desktop/manual microphone acceptance. Current results and remaining
+gates are maintained in [validation](docs/validation.md).
 
-| Region and tier | Evidence / behaviour |
+| Region and tier | Support boundary |
 |---|---|
-| Global Personal | Historical synchronous URL-sample success on 2026-09-25, despite absence from `/models`; not freshly verified |
-| Global Team | Unverified; not enabled by this backend |
-| China Personal / Team | Unverified; not enabled by this backend |
+| Global Personal | Enabled; see dated validation evidence |
+| Global Team | Not enabled by this backend |
+| China Personal / Team | Not enabled by this backend |
 
 The vendor's [exact-model example](https://www.qwencloud.com/models/qwen-audio-3.0-asr-flash)
 uses `input_audio` with `format: wav` and `sample_rate: "16000"`.
 The [audio specifications](https://docs.qwencloud.com/developer-guides/speech/speech-to-text-models)
-list Base64 input for this exact model. Our local-file inline encoding still needs
-an approved Token Plan live check; the historical test used a public sample URL.
-Neither vendor PAYG documentation nor historical success proves current entitlement.
+list Base64 input for this exact model. Historical 2026-09-25 success used a
+public sample URL; the 2026-10-20 check exercised local-file inline encoding.
+Neither vendor PAYG documentation nor historical success proves current entitlement
+for other accounts or regions.
 
 `streaming_capable` remains **false**. `open_stream_session` raises the native
 `NotImplementedError`; Hermes retains its file-based recording/fallback path.
@@ -132,7 +142,7 @@ Neither entrypoint changes STT configuration. See
 [installation, migration and recovery](docs/installation.md), especially before
 moving from standalone preview plugins to the native pack.
 
-## Validation and proposed live budget
+## Validation and remaining gates
 
 Offline commands (use an existing environment with pytest/Hermes dependencies):
 
@@ -144,20 +154,16 @@ python -m compileall -q alibaba-token-plan alibaba-token-plan-media tests
 git diff --check
 ```
 
-Paid/live inference, real Telegram delivery and Desktop/CLI device acceptance:
-**NOT RUN**. No operator credential was accessed. During initial test development,
-a mock invalidated by plugin rediscovery allowed one synthetic-key POST, which
-returned HTTP 401. The corrected native test mocks the HTTP boundary and blocks
-socket connections. This is not successful inference evidence.
+See [validation](docs/validation.md) for the authoritative live results and
+remaining gates. Successful local-file ASR and native Telegram sender delivery
+do not establish microphone ingestion, human playback or Desktop/manual device
+acceptance. Credit costs remain a separate measurement; no account-wide or
+cross-region health is implied. Further paid checks require separate bounded
+operator permission.
 
-Proposed separately authorised interactive validation: Global Personal only,
-exact model/endpoint above, **two calls maximum**, one English and one Chinese
-recording of at most five seconds each. Use one received Telegram voice recording
-and one file through the supported Desktop/CLI relay. No retries; stop after the
-first unexpected error or billing result. Proposed hard monetary ceiling:
-**US$0.05 equivalent**, only if the operator can enforce/observe it before testing;
-otherwise do not proceed. Token Plan credit coefficients are unmeasured, so no
-exact credit deduction is promised. Record actual duration and credit change.
+Historical test-development incident: a mock invalidated by plugin rediscovery
+allowed one synthetic-key POST, which returned HTTP 401. The corrected native test mocks the HTTP boundary and blocks socket connections. That incident
+is not successful inference evidence.
 
 ## Reference and licence
 

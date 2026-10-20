@@ -2,7 +2,8 @@
 
 One opt-in Hermes plugin registers image generation/editing, asynchronous video,
 whole-file speech synthesis and file transcription through the standard native
-tools and voice pipeline. Requires Hermes v0.22.0+; chat is a separate component.
+tools and voice pipeline. Both chat and media components are version 2.0.0.
+Requires Hermes v0.22.0+; chat is a separate component.
 The generated catalogue is bundled here, so this package works without chat.
 
 Install using the coordinated release pack, which enables its components after
@@ -46,8 +47,10 @@ use host modules that admission flags as private imports; those warnings are
 disclosed compatibility risks, not suppressed or bypassed. Exact-SHA updates
 must pass the native regression and admission checks again.
 
-Media is experimental until the separately authorised live and device acceptance
-checks are recorded. See [image](../docs/native-image.md),
+Bounded Global Personal native-dispatch checks passed on 2026-10-20; remaining
+account, billing and device acceptance gates are tracked in
+[validation](../docs/validation.md). Media remains experimental while those gates
+are outstanding. See [image](../docs/native-image.md),
 [video](../docs/native-video.md), [TTS](../docs/native-tts.md) and
 [ASR](../NATIVE-ASR.md) for exact supported modes, setup and historical evidence.
 The package includes MIT source licences and reference attribution notices.

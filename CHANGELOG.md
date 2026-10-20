@@ -9,6 +9,10 @@ to Hermes's backend fallback. Review provider selection and installation ownersh
 before upgrading; see [migration and rollback](docs/installation.md). Existing
 chat provider names, aliases, endpoints and credential namespaces remain compatible.
 
+- Refresh the canonical chat catalogue with `deepseek-v4.1-flash-1017` on
+  Personal and Team, and remove the dated `deepseek-v4-pro-0813` discovery
+  exception now that it is listed again. Preserve canonical order and generic
+  callable-but-unlisted coverage.
 - Resolve auxiliary chat catalogue credentials through Hermes's active profile
   scope and partition cached selections by credential and endpoint, preventing
   one multiplexed profile from borrowing another profile's process credentials

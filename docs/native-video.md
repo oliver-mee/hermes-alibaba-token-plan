@@ -4,7 +4,10 @@ The video backend in `alibaba-token-plan-media` uses Hermes's normal
 `video_generate` tool. Chat profiles, names, credentials and defaults are unchanged.
 Requires Hermes v0.22.0 or newer with `VideoGenProvider`, secret scopes and safe
 `save_url_video`. Chat retains its existing v0.18.2–v0.19.0 contract.
-Installation copies files only: it neither enables the plugin nor selects a provider.
+The shell installer copies files only: it neither enables the plugin nor selects
+a provider. The coordinated 2.0.0 release pack installs chat and the combined
+media plugin and enables both after interactive consent; see
+[installation](installation.md).
 
 After `./install.sh`, explicitly add `alibaba-token-plan-media` to your existing
 `plugins.enabled` list. Preserve the other entries. Select in `hermes tools` or configure:
@@ -35,7 +38,7 @@ Secrets use Hermes's profile-scoped lookup. Native video intentionally uses cano
 keys only, with no legacy alias, other tier/region, Coding Plan or PAYG fallback.
 Existing chat alias precedence remains unchanged. Installation needs no credentials.
 
-## Implemented subset and evidence (2026-10-15)
+## Implemented subset and catalogue provenance
 
 The canonical [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 provides entitlement metadata, not proof of successful generation. Picker IDs are
@@ -77,9 +80,11 @@ No claim is made that generated output is silent: audio generation controls are 
 
 Historical evidence: HappyHorse t2v submissions reached PENDING/RUNNING on Global
 Personal/Team in July; this is not completed-video proof. Wan listing was confirmed
-on Global Personal, Global Team and CN Team on 2026-10-15. CN Personal and completed
-video generation on **every** region/tier remain unverified. All live checks for
-this PR: **NOT RUN**. Offline mocks prove routing and failure behaviour only.
+on Global Personal, Global Team and CN Team on 2026-10-15. Those listing and
+pending-job observations do not establish current inference health. Completed
+Global Personal HappyHorse outputs were decoded and inspected through native Hermes v0.22.0 dispatch on 2026-10-20. Current per-model results
+and remaining region/tier gaps are maintained in [validation](validation.md).
+Offline mocks prove routing and failure behaviour only.
 
 ## Safety, privacy and recovery
 
@@ -120,24 +125,21 @@ check. Cache failure is an error with the task ID, never an unsafe URL fallback.
 Downloads carry no API key. No persistent prompt/image/job ledger is created.
 Manual regeneration is always a new paid submission; there is no cross-call deduplication.
 
-`./install.sh --verify` checks both chat and video; install upgrades preserve recovery
-backups. Uninstall moves both plugins to backups without changing configuration.
-Remove the explicit enable/provider selection or restore previous directories from
-`plugins/model-providers/.backups` and `plugins/video_gen/.backups` to roll back.
-Sibling PRs [TTS #28](https://github.com/oliver-mee/hermes-alibaba-token-plan/pull/28)
-and [ASR #27](https://github.com/oliver-mee/hermes-alibaba-token-plan/pull/27) should reuse the additive installer pattern; merge video first,
-then rebase their installer changes. No shared voice framework is introduced here.
+`./install.sh --verify` checks chat and the complete media plugin; shell upgrades
+preserve recovery backups. Shell uninstall moves both components to backups
+without changing configuration. Remove the explicit enable/provider selection
+or restore the previous component directories and configuration as described in
+[installation and rollback](installation.md). Video, image, TTS and ASR ship in
+one media plugin; no sibling merge order or standalone video install is needed.
 
-## Proposed live gate (not authorised or run)
+## Live acceptance and remaining gates
 
-Interactive Global Personal only: one five-second t2v and i2v HappyHorse request,
-one five-second r2v request, then one five-second 480p Wan t2v request; maximum four
-POSTs, 100 polls per task, four downloads, no resubmission. Use harmless synthetic
-images. Stop on the first unexpected error or billing event. Proposed hard ceiling:
-US$5 equivalent **and** an operator-agreed Token Plan credit cap, whichever is lower.
-Do not start until the operator confirms both the cap and how deduction is measured;
-PAYG card prices do not establish plan credit costs. Check playable output, actual
-duration and balance deductions. Wan i2v requires separate contract review first.
+See [validation](validation.md) for dated native-dispatch results, decoded output
+inspection, delivery observations and remaining gates, including Wan video status.
+Human playback and Desktop/manual device acceptance remain distinct from decoded
+artifacts and successful sender delivery. Current results do not establish all
+region/tier health or measured credit costs. Further paid checks require separate
+bounded operator permission; no request is authorised by this document.
 
 ## Attribution
 

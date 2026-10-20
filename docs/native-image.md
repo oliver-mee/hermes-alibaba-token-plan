@@ -7,7 +7,7 @@ Chat's previously supported v0.18.2/v0.19.0 compatibility lanes remain in CI.
 
 ## Evidence and model selection
 
-Reviewed 2026-10-16. The public [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
+Catalogue and contract review: 2026-10-16. The public [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 is the catalogue provenance surface. `catalogue.json` is an ordered export of
 the canonical image rows, including their endpoint uncertainty. Regenerate with
 `python3 scripts/sync-image-catalogue.py /path/to/models.json`. The exporter
@@ -28,10 +28,12 @@ and ASR rows establish no additional image model entitlement.
 | `wan2.7-image` | Listed | Listed | Listed | Listed | Async generation/editing |
 | `wan2.7-image-pro` | Listed | Listed | Listed | Listed | Async generation/editing |
 
-**Live Token Plan image inference: NOT RUN for every cell.** Canonical endpoint
-evidence explicitly says generation has not been probed. Published regional
-contracts below guide implementation, but their availability through Token Plan
-remains unverified. Unknown/newer models, dated aliases, and ineligible tier
+The table records catalogue eligibility, not current inference health. Global
+Personal generation and editing on both Wan variants passed native Hermes
+v0.22.0 dispatch and visual inspection on 2026-10-20. See the authoritative
+[validation record](validation.md) for current results and remaining account,
+model and device gaps. Published regional contracts alone do not establish
+Token Plan availability. Unknown/newer models, dated aliases, and ineligible tier
 selections fail before submission. There is no `/models` lookup, trial request,
 automatic model upgrade, or PAYG fallback.
 An eligible catalogue row also needs an implemented exact-ID wire contract
@@ -39,6 +41,11 @@ before becoming selectable. Refreshing catalogue evidence alone cannot enable
 a new model family.
 
 ## Install and configure
+
+Image is part of the combined `alibaba-token-plan-media` package, coordinated
+with chat at version 2.0.0. The release pack enables both components after
+interactive consent; select the desired image provider separately. See
+[installation](installation.md) for the pack and shell workflows.
 
 `./install.sh` installs chat and `alibaba-token-plan-media/` into the
 corresponding Hermes plugin directories. It copies files only. `--verify` checks
@@ -84,8 +91,8 @@ Model precedence is explicit native call argument, provider-scoped `model`,
 top-level `image_gen.model`, then the first eligible canonical row. Hermes's
 normal dispatcher passes `image_gen.model` as an explicit argument, so prefer
 the top-level field for interactive use and avoid conflicting model settings.
-Never place a key in YAML. Installation does not enable the plugin or select a
-model. Setup prompts list only the canonical key for the selected region/tier.
+Never place a key in YAML. The shell installer does not enable the plugin or
+select a model. Setup prompts list only the canonical key for the selected region/tier.
 
 Invoke the normal `image_generate` tool after configuration. `image_url` and
 `reference_image_urls` accept absolute local paths, base64 data URIs, or public
@@ -214,27 +221,13 @@ per-profile credentials/cache isolation, HTTP job flow/errors, no retries,
 reference limits, local/remote safety, installer lifecycle and chat regression.
 The real-Hermes test blocks socket connections and mocks the HTTP boundary with
 synthetic keys. CI adds v0.22.0 native lanes on Linux Python 3.11/3.13 and macOS
-Python 3.11; current-main advisory includes native dispatch on Python 3.14.
+Python 3.11. See [validation](validation.md) for the advisory and independent
+current-main checks and their Python versions.
 
-This branch is independent of ASR #27, TTS #28 and video #30. Shared installer,
-README, CHANGELOG and CI edits will need integration after review. Retain all
-category-specific manifests, files, checks, rollback entries and disabled
-defaults when resolving those conflicts. Do not replace a sibling installer's
-component list with this branch's chat/image list. No sibling branch or
-canonical catalogue data was edited for this feature.
+Image, video, TTS and ASR now ship in one combined media plugin alongside the
+chat component. No sibling preview branch or separate image installer is required.
 
-Live inference, credit metering, rendered-image quality, Telegram/Discord
-delivery and Desktop/CLI relay acceptance are **NOT RUN**. No operator keys
-were accessed and no runtime installation/configuration was changed.
-
-Proposed next gate, requiring separate informed approval: one chosen Global
-Team subscription, four paid submissions maximum, `n=1`, 1024*1024, two models
-(`qwen-image-2.0` and `wan2.7-image`), one text generation and one edit each.
-Use a synthetic non-private reference, normal `image_generate` dispatch and
-at most 60 status GETs per Wan job; cache the four returned artifacts. Confirm
-the applicable Token Plan debit and an operator-approved hard credit/currency
-ceiling before starting; no cost or conversion is assumed from PAYG cards.
-Stop at the first unexpected billing/error, never resubmit ambiguously, and
-record exact call count, dimensions, delivery and observed credit change.
-This does not establish CN, Personal or Pro support; those remain separate
-bounded gates. No live request is authorised by this proposal itself.
+Current live results, delivery observations, credit-metering limits and remaining
+release gates are maintained in [validation](validation.md). Global Personal
+success does not establish Team or China inference health. Further paid checks
+require separately bounded operator permission; this document grants none.

@@ -1,4 +1,4 @@
-# Proposed live acceptance gate
+# Authorised live acceptance gate
 
 Status: **Owner authorised the necessary live acceptance checks on 2026-10-20;
 results are recorded separately in validation.md.** The owner also selected

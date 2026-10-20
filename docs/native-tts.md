@@ -2,8 +2,10 @@
 
 This optional backend uses Hermes's existing `text_to_speech` tool and automatic
 voice replies. It requires Hermes **v0.22.0 or newer**, Python 3.11–3.13 and
-`websockets >=14,<17` in the Hermes environment. The installer never installs
+`websockets >=14,<17` in the Hermes environment. The shell installer never installs
 runtime dependencies, enables plugins, or changes chat, speech or voice defaults.
+The coordinated 2.0.0 release pack installs chat and the combined media plugin
+and enables both after interactive consent; select the speech provider separately.
 Older Hermes versions retain the existing chat plugin; leave TTS disabled.
 Native contract tests ran against v0.22.0 and the current installed checkout on
 2026-10-16. Other releases/platforms require CI validation.
@@ -31,12 +33,12 @@ creating additional paid tasks. For another provider name, change both the
 `provider` value and the nested key. Model catalogue metadata alone does not
 currently drive Hermes's chunking limit.
 
-| Speech provider | Canonical credential | Synthesis evidence |
+| Speech provider | Canonical credential | Region/tier |
 |---|---|---|
-| `alibaba-token-plan` | `ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY` | Current live check NOT RUN |
-| `alibaba-token-plan-team` | `ALIBABA_TOKEN_PLAN_TEAM_API_KEY` | Historical Global Team success, 2026-09-08 |
-| `alibaba-token-plan-cn` | `ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY` | Current live check NOT RUN |
-| `alibaba-token-plan-cn-team` | `ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY` | Current live check NOT RUN |
+| `alibaba-token-plan` | `ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY` | Global Personal |
+| `alibaba-token-plan-team` | `ALIBABA_TOKEN_PLAN_TEAM_API_KEY` | Global Team |
+| `alibaba-token-plan-cn` | `ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY` | China Personal |
+| `alibaba-token-plan-cn-team` | `ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY` | China Team |
 
 Personal providers preserve the chat plugin's legacy environment alias order.
 Keys resolve through Hermes's scope-aware secret lookup, without generic pool
@@ -54,10 +56,15 @@ Only `qwen-audio-3.0-tts-plus` is currently implemented and present in the gener
 TTS catalogue. Its native voice picker exposes two system voices, both supporting
 Mandarin Chinese and English:
 
-| Voice | Metadata | Token Plan synthesis evidence |
-|---|---|---|
-| `longanlingxin` (default) | Female | Historical Global Team success, 2026-09-08 |
-| `longanlufeng` | Male | Documented model-specific voice; live check NOT RUN |
+| Voice | Metadata |
+|---|---|
+| `longanlingxin` (default) | Female |
+| `longanlufeng` | Male |
+
+Bounded Global Personal synthesis passed through native Hermes v0.22.0 dispatch
+on 2026-10-20: English with `longanlingxin` and Chinese with `longanlufeng`,
+both converted to Ogg/Opus. See [validation](validation.md) for current evidence and limits.
+Historical Global Team synthesis success on 2026-09-08 remains dated provenance.
 
 Both IDs appear in the [pinned public catalogue](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/a76c7a7e8c5846c80ab65991546e30cac66035b0/data/models.json)
 and the [vendor's model-specific voice table](https://www.alibabacloud.com/help/en/model-studio/qwen-audio-tts-voice-list)
@@ -115,32 +122,27 @@ suppressed because they can contain private text or credentials. No audio or a
 missing terminal success event is a failure. A model listing is not a synthesis
 health check.
 
-Rollback: disable this plugin or restore the previous speech provider selection.
-`./install.sh --uninstall` moves this backend and the chat plugin to recovery
-backups under `plugins/model-providers/.backups`; it preserves config and sibling
-media plugins. To roll back only TTS, disable it and restore its backed-up
-folder manually. The combined media package includes video, image, TTS and ASR. See the shared
-[installation and rollback guide](installation.md) when moving from preview plugins.
+Rollback: restore the previous speech provider selection to stop using Token
+Plan TTS. Disabling `alibaba-token-plan-media` disables its other media providers
+too. Shell uninstall moves chat and the complete media component to recovery
+backups under their respective plugin roots, preserving configuration and
+unrelated plugins. Follow the shared [installation and rollback guide](installation.md)
+for recovery and migration from preview plugins.
 
-## Validation and proposed live budget
+## Validation and remaining gates
 
 Offline tests cover lifecycle payloads/order, formats, empty/error/oversize
 responses, timeout and interruption cleanup, concurrent independent calls,
 voice/model/rate validation, key/legacy-alias routing, unsafe/unwritable output,
 installer upgrade/verify/uninstall and real native loading/tool dispatch with a
 mocked transport. These establish host contracts, not playable vendor audio.
-Live gateway discovery, synthesis, credit deduction, Telegram voice playback and
-Desktop/CLI relay playback: **NOT RUN**, no credential access authorised.
 
-Proposed separate approval: Global Team canonical WebSocket endpoint, exact
-model above and voice `longanlingxin`; two interactive synthesis calls total,
-one English and one Chinese, each at most 40 characters (80 characters total).
-No retries or other models/regions. Hard ceiling: US$0.10 equivalent or 100
-Token Plan credits, whichever is reached first. Proceed only if the operator
-can enforce/confirm the ceiling before submission; Token Plan conversion is
-unmeasured. Stop on first unexpected charge/error. Reuse those two files for
-Telegram voice and Desktop/CLI relay playback without extra synthesis requests.
-PCM streaming needs a separate implementation and verification before enabling.
+The authoritative [validation record](validation.md) separates current synthesis,
+Opus conversion and native Telegram sender delivery from human playback and
+Desktop/manual microphone acceptance, which remain unverified. Credit deduction
+and cross-region/tier health must not be inferred from Global Personal success.
+Further paid checks require separately bounded operator permission. PCM streaming
+needs a separate implementation and verification before enabling.
 
 ## Sources and attribution
 
