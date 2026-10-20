@@ -10,6 +10,7 @@ has been measured.
 
 from __future__ import annotations
 
+import hashlib
 import inspect
 import os
 from typing import Any
@@ -152,11 +153,19 @@ class QwenTokenPlanProfile(ProviderProfile):
         ]
 
     def _resolve_credentials(self) -> tuple[str | None, str | None]:
-        """Return (api_key, base_url) from this profile's own env vars."""
+        """Resolve this profile through Hermes's active secret scope when available."""
+        try:
+            from agent.secret_scope import get_secret
+        except ModuleNotFoundError as exc:
+            if exc.name not in {"agent", "agent.secret_scope"}:
+                raise
+            # Older supported hosts predate scoped secrets. Never fall back
+            # after a scoped lookup fails or an active scope lacks a key.
+            get_secret = os.environ.get
         api_key = None
         base_url = None
         for name in self.env_vars:
-            value = os.environ.get(name)
+            value = get_secret(name)
             if not value:
                 continue
             if name.endswith("_BASE_URL") or name.endswith("_URL"):
@@ -176,35 +185,36 @@ class QwenTokenPlanProfile(ProviderProfile):
 
         Per the base contract this must be cheap, must never raise, and
         returns "" so the caller falls through to ``default_aux_model``. The
-        result is cached for the life of the process because this runs on
-        client-resolution paths. Discovery is a ``GET /models``, which costs
-        no tokens.
+        result is cached per credential and endpoint because profiles can share
+        one process. Discovery is a ``GET /models``, which costs no tokens.
         """
         cache = getattr(self, "_aux_model_cache", None)
         if cache is None:
             cache = {}
             object.__setattr__(self, "_aux_model_cache", cache)
-        if vision in cache:
-            return cache[vision]
-
         resolved = ""
+        cache_key = None
         try:
             api_key, base_url = self._resolve_credentials()
-            if api_key:
-                live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
-                if live:
-                    entitled = {model.lower() for model in live}
-                    preference = _VISION_AUX_PREFERENCE if vision else _AUX_PREFERENCE
-                    resolved = next(
-                        (model for model in preference if model.lower() in entitled),
-                        "",
-                    )
+            if not api_key:
+                return ""
+            cache_key = (vision, base_url, hashlib.sha256(api_key.encode()).digest())
+            if cache_key in cache:
+                return cache[cache_key]
+            live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
+            if live:
+                entitled = {model.lower() for model in live}
+                preference = _VISION_AUX_PREFERENCE if vision else _AUX_PREFERENCE
+                resolved = next(
+                    (model for model in preference if model.lower() in entitled),
+                    "",
+                )
         except Exception:
             # Never raise from a client-resolution path. An empty string is
             # the documented "no answer" value and keeps default_aux_model.
-            resolved = ""
-
-        cache[vision] = resolved
+            if cache_key is None:
+                return ""
+        cache[cache_key] = resolved
         return resolved
 
     def build_api_kwargs_extras(
