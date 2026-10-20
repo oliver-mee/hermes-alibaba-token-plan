@@ -4,7 +4,22 @@
 [![Release](https://img.shields.io/github/v/release/oliver-mee/hermes-alibaba-token-plan)](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Standalone [Hermes Agent](https://github.com/NousResearch/hermes-agent) model-provider plugin for the Alibaba Token Plan (Qwen Cloud is an alternate console view of the same plan, not a separate product).
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) integration for Alibaba Token Plan: chat plus opt-in native image, video, speech synthesis and file transcription. Qwen Cloud is an alternate console view of the same plan, not a separate product.
+
+Version 2.0.0 contains two coordinated components: the improved, backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. See [validation](docs/validation.md) for native integration, package lifecycle and dated live/playback results.
+
+The major version marks the move from the 1.x chat-only distribution to a
+coordinated chat and media installation. Native pack consent enables both
+components, so review [migration and rollback](docs/installation.md) before
+upgrading. Existing chat provider names, aliases, endpoints and credential
+namespaces remain compatible.
+
+The standalone chat provider follows [upstream's direction to publish the Global
+and China integration as a plugin](https://github.com/NousResearch/hermes-agent/pull/52915#issuecomment-4976935709).
+It replaces Hermes's bundled basic Personal profiles through the supported user-provider
+override mechanism and adds explicit Team profiles, current tier-aware catalogues,
+isolated account credentials and discovery caches, model-specific reasoning controls,
+and a lower-cost auxiliary model. Existing provider names and aliases are preserved.
 
 One installed plugin registers four providers, one per region and tier, because the two
 tiers have different catalogues and the `sk-sp-` key prefix is identical for both, so the
@@ -25,8 +40,11 @@ Completions transport.
 
 ## Requirements
 
-- Hermes Agent v0.18.2 through v0.19.0
-- Python 3.11 through 3.13
+- Chat: Hermes Agent v0.18.2/v0.19.0 compatibility points, plus v0.22.0
+- Native media and installation packs: Hermes Agent v0.22.0+
+- Media dependencies: `httpx>=0.28,<0.29`, `websockets>=14,<17`
+- Voice-note conversion/delivery: existing ffmpeg and ffprobe when required
+- Python 3.11+ with a version supported by your Hermes release
 - Linux or macOS
 
 CI tests the compatibility points above. The scheduled advisory check tracks
@@ -35,34 +53,47 @@ supported contract.
 
 ## Install
 
+Download `hermes-pack.yaml` from the selected [GitHub release](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases). Review the two source pins, then run:
+
+```bash
+hermes plugins pack show ./hermes-pack.yaml
+hermes plugins pack install ./hermes-pack.yaml
+```
+
+Hermes asks for consent interactively and records each component's provenance.
+Before migrating an existing installation, follow [the preflight and backup steps](docs/installation.md).
+The pack installs chat and media as separate pinned plugins; it is not an atomic
+multi-plugin update. A partial failure leaves individually completed installs
+in place. Resolve the reported failure before continuing; do not bypass guards.
+The pack contains no keys and selects no default provider. After its review and
+confirmation, Hermes enables the installed components using its normal consent
+flow. Configure the desired native provider separately. When none is configured,
+Hermes may choose an available enabled backend automatically; an existing chat
+key can make Personal media available. Set explicit providers before using media,
+or disable `alibaba-token-plan-media` if you want chat only. Installation itself
+does not submit generation requests.
+Only the account/region/tier whose credential you configure can be selected.
+
+For a tagged source checkout, or older chat-only Hermes:
+
 ```bash
 git clone https://github.com/oliver-mee/hermes-alibaba-token-plan
 cd hermes-alibaba-token-plan
 git checkout <release-tag>
 ./install.sh
-```
-
-Choose the latest stable tag from
-[Releases](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases).
-Installing a tagged release is recommended; `main` is the next-release branch.
-
-The installer copies `alibaba-token-plan/` to:
-
-```text
-${HERMES_HOME:-~/.hermes}/plugins/model-providers/
-```
-
-That directory registers all four providers. During upgrade, the installer backs up and removes the legacy standalone `alibaba-token-plan-cn/` directory so it cannot register a second China profile and override this one.
-
-Installed files and previous versions are preserved under `plugins/model-providers/.backups/`.
-
-```bash
 ./install.sh --verify
-./install.sh
-./install.sh --uninstall
 ```
 
-The installer rejects symlinked plugin and backup destinations.
+The shell installer installs chat under `plugins/model-providers/alibaba-token-plan`
+and media under `plugins/alibaba-token-plan-media` in the selected
+`${HERMES_HOME:-~/.hermes}`. It stages and verifies the complete package before
+publication, preserves recovery backups, and restores the previous state on a
+failed install. It never enables plugins, installs dependencies or changes defaults.
+Older Hermes can retain chat while leaving media disabled.
+
+Use `./install.sh --uninstall` for shell-installed files. Use Hermes's native
+`plugins update`/`plugins remove` commands for native installations. Do not mix
+native and shell ownership; see [migration and rollback](docs/installation.md).
 
 ## Credentials
 
@@ -99,9 +130,9 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
 <!-- BEGIN GENERATED:tier-summary -->
-- Personal keys currently resolve to 11 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to 18 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- If discovery fails or no key is configured, the Personal providers use the Personal list of 11 as the offline fallback; the Team providers fall back to the Team list of 18.
+- Personal keys currently resolve to 12 chat models.
+- Team keys currently resolve to 19 chat models.
+- If discovery fails or no key is configured, the Personal providers use the Personal list of 12 as the offline fallback; the Team providers fall back to the Team list of 19.
 <!-- END GENERATED -->
 
 The catalogue lives in `alibaba-token-plan/fallback_models.py`, a generated file
@@ -110,11 +141,16 @@ from catalogue rows marked `status: unlisted`; it is reserved for models proven
 callable despite being absent from `/models`. Update it by regenerating upstream
 and copying the file over, never by hand-editing the tuples.
 
+The current export follows the public wiki's
+[2026-10-20 snapshot](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/3dd82cea88b19c436d5c11a622980c972a6ba1c4/data/models.json).
+It includes `deepseek-v4.1-flash-1017` in both chat tiers and has no current
+unlisted chat exceptions. `deepseek-v4-pro-0813` is listed again; its older
+absence observations are historical.
+
 `supports_health_check` is enabled so Hermes can check endpoint reachability, but
 `GET /models` is not proof that every exact-ID model is listed or that a lapsed
-subscription can infer. `deepseek-v4-pro-0813` is the measured exception here:
-it returns HTTP 200 with output on both Team and Personal despite being absent
-from discovery (Team use reported by the operator; Personal probe 2026-08-31).
+subscription can infer. Historical exact-ID inference and current listing
+evidence remain separate from current inference acceptance.
 
 ### Personal chat catalogue and offline fallback
 
@@ -128,8 +164,9 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 7. `deepseek-v4-pro-0813`
 8. `deepseek-v4-flash-0731`
 9. `deepseek-v4.1-flash`
-10. `glm-5.2`
-11. `glm-5.3`
+10. `deepseek-v4.1-flash-1017`
+11. `glm-5.2`
+12. `glm-5.3`
 <!-- END GENERATED -->
 
 ### Team chat catalogue
@@ -145,14 +182,15 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 8. `deepseek-v4-pro-0813`
 9. `deepseek-v4-flash-0731`
 10. `deepseek-v4.1-flash`
-11. `kimi-k2.7-code`
-12. `kimi-k2.6`
-13. `kimi-k2.5`
-14. `glm-5.2`
-15. `glm-5.3`
-16. `glm-5.1`
-17. `glm-5`
-18. `MiniMax-M2.5`
+11. `deepseek-v4.1-flash-1017`
+12. `kimi-k2.7-code`
+13. `kimi-k2.6`
+14. `kimi-k2.5`
+15. `glm-5.2`
+16. `glm-5.3`
+17. `glm-5.1`
+18. `glm-5`
+19. `MiniMax-M2.5`
 <!-- END GENERATED -->
 
 `qwen3.7-plus` is the recommended general default. `qwen3.6-flash` is the Hermes auxiliary model.
@@ -162,7 +200,11 @@ from discovery (Team use reported by the operator; Personal probe 2026-08-31).
 The generated `MEDIA_MODELS` metadata in `fallback_models.py` records the plan's
 non-chat models alongside the chat lists. These are not chat-picker entries:
 `wan3.0-video`, for example, uses asynchronous video synthesis, not Chat
-Completions. This provider does not implement media job submission or polling.
+Completions. The combined media component implements native image generation/editing,
+asynchronous video, whole-file speech and synchronous file transcription.
+See [image](docs/native-image.md), [video](docs/native-video.md),
+[TTS](docs/native-tts.md) and [ASR](NATIVE-ASR.md) for explicit configuration,
+implemented subsets and evidence limits. Realtime calling and PCM streaming remain disabled.
 See the [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 for the per-model endpoints, rates and dated entitlement evidence. Listing
 entitlement does not establish successful inference or a measured credit charge.
@@ -180,6 +222,16 @@ entitlement does not establish successful inference or a measured credit charge.
 - `happyhorse-1.1-r2v` (video; team, personal; global, cn)
 - `wan3.0-video` (video; team, personal; global, cn)
 <!-- END GENERATED -->
+
+## Native file transcription (opt-in)
+
+The installer also packages a native `TranscriptionProvider` for
+`qwen-audio-3.0-asr-flash`. It requires Hermes v0.22.0+, explicit enablement and
+STT selection; installation leaves existing defaults unchanged. It uses synchronous
+multimodal HTTP, with streaming disabled. Global Personal local-file English/Chinese
+transcription passed native dispatch on 2026-10-20; this does not establish Team/China support or microphone ingestion.
+See [setup and safety](NATIVE-ASR.md) and the authoritative
+[validation record](docs/validation.md).
 
 ## Thinking behaviour
 

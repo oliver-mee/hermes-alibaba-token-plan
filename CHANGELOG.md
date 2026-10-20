@@ -1,5 +1,36 @@
 # Changelog
 
+## 2.0.0
+
+This major release changes the installation contract from the 1.x chat-only
+distribution to coordinated chat and native media packages. Native pack consent
+enables both components, and an existing chat credential can make media available
+to Hermes's backend fallback. Review provider selection and installation ownership
+before upgrading; see [migration and rollback](docs/installation.md). Existing
+chat provider names, aliases, endpoints and credential namespaces remain compatible.
+
+- Refresh the canonical chat catalogue with `deepseek-v4.1-flash-1017` on
+  Personal and Team, and remove the dated `deepseek-v4-pro-0813` discovery
+  exception now that it is listed again. Preserve canonical order and generic
+  callable-but-unlisted coverage.
+- Resolve auxiliary chat catalogue credentials through Hermes's active profile
+  scope and partition cached selections by credential and endpoint, preventing
+  one multiplexed profile from borrowing another profile's process credentials
+  or cached auxiliary model.
+- Add opt-in native video, image generation/editing, whole-file TTS and file ASR
+  through Hermes's existing tools and voice pipeline. Media requires v0.22.0+;
+  existing chat compatibility and provider/credential aliases remain.
+- Package chat and combined media as self-contained native catalog components,
+  with a release pack pinning both to one reviewed commit.
+- Reconcile shell installation, verification and removal into one transaction
+  with recovery backups; detect mixed native/shell ownership and preview plugins.
+- Preserve scoped regional/tier credentials, exact model selection, safe bounded
+  input/artifact handling, cancellation and deadlines. Never automatically retry
+  ambiguous paid submissions; PCM/realtime calling remain disabled.
+- Add combined offline discovery/dispatch, package lifecycle, rollback, privacy,
+  catalogue and release-asset checks. See docs/validation.md for actual results;
+  live acceptance and credit metering are separate gates, not implied by tests.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat

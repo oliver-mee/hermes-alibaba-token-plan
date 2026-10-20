@@ -10,12 +10,37 @@ has been measured.
 
 from __future__ import annotations
 
+import hmac
 import inspect
 import os
 from typing import Any
 
 from providers import register_provider
 from providers.base import ProviderProfile
+
+# Cache identities are private to this loaded plugin and never persist keys.
+_AUX_CACHE_KEY = os.urandom(32)
+
+# Native and legacy shell installation use different discovery locations.
+# Refuse an ambiguous duplicate instead of silently overriding another copy.
+def _check_install_location():
+    from pathlib import Path
+    here = Path(__file__).resolve().parent
+    if here.name == "alibaba-token-plan-provider":
+        root = here.parent
+    elif here.name == "alibaba-token-plan" and here.parent.name == "model-providers":
+        root = here.parent.parent
+    elif here.name == "alibaba-token-plan" and here.parent.name == "plugins":
+        root = here.parent
+    else:
+        return  # source checkout or an explicitly named custom package
+    locations = (root / "model-providers/alibaba-token-plan",
+                 root / "alibaba-token-plan-provider", root / "alibaba-token-plan")
+    if any(other != here and (other.exists() or other.is_symlink()) for other in locations):
+        raise RuntimeError("Duplicate Token Plan chat installation; follow the documented shell/native migration before loading")
+
+
+_check_install_location()
 
 # `supports_prompt_cache_key` was added to ProviderProfile in a later Hermes than
 # the versions some users run (the compat matrix tests v0.18.2 and v0.19.0,
@@ -106,14 +131,11 @@ class QwenTokenPlanProfile(ProviderProfile):
         fails. A successful response containing no recognised chat IDs returns
         an empty list instead of promoting unknown gateway entries.
 
-        UNLISTED_MODELS are kept even though live discovery never returns them:
-        the gateway answers these ids with HTTP 200 by exact id but
-        deliberately omits them from /models (measured 2026-08-18 and
-        2026-08-31 — deepseek-v4-pro-0813 serves on both tiers while absent
-        from the listing). Dropping them makes selectable, working models
-        vanish from the picker, so they are appended when live discovery
-        succeeds. They are still gated by the per-tier catalogue: a team-only
-        unlisted id never appears on a personal profile.
+        Evidence-backed UNLISTED_MODELS remain selectable when a successful
+        discovery response omits them, in canonical per-tier order. The
+        current snapshot has no unlisted chat IDs: deepseek-v4-pro-0813 is
+        listed again. Future exceptions are still gated by the per-tier
+        catalogue, so a team-only unlisted ID cannot appear on Personal.
         """
         live = super().fetch_models(
             api_key=api_key,
@@ -131,11 +153,19 @@ class QwenTokenPlanProfile(ProviderProfile):
         ]
 
     def _resolve_credentials(self) -> tuple[str | None, str | None]:
-        """Return (api_key, base_url) from this profile's own env vars."""
+        """Resolve this profile through Hermes's active secret scope when available."""
+        try:
+            from agent.secret_scope import get_secret
+        except ModuleNotFoundError as exc:
+            if exc.name not in {"agent", "agent.secret_scope"}:
+                raise
+            # Hosts without scoped secrets use the environment. Never fall back
+            # after a scoped lookup fails or an active scope lacks a key.
+            get_secret = os.environ.get
         api_key = None
         base_url = None
         for name in self.env_vars:
-            value = os.environ.get(name)
+            value = get_secret(name)
             if not value:
                 continue
             if name.endswith("_BASE_URL") or name.endswith("_URL"):
@@ -155,35 +185,36 @@ class QwenTokenPlanProfile(ProviderProfile):
 
         Per the base contract this must be cheap, must never raise, and
         returns "" so the caller falls through to ``default_aux_model``. The
-        result is cached for the life of the process because this runs on
-        client-resolution paths. Discovery is a ``GET /models``, which costs
-        no tokens.
+        result is cached per credential and endpoint because profiles can share
+        one process. Discovery is a ``GET /models``, which costs no tokens.
         """
         cache = getattr(self, "_aux_model_cache", None)
         if cache is None:
             cache = {}
             object.__setattr__(self, "_aux_model_cache", cache)
-        if vision in cache:
-            return cache[vision]
-
         resolved = ""
+        cache_key = None
         try:
             api_key, base_url = self._resolve_credentials()
-            if api_key:
-                live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
-                if live:
-                    entitled = {model.lower() for model in live}
-                    preference = _VISION_AUX_PREFERENCE if vision else _AUX_PREFERENCE
-                    resolved = next(
-                        (model for model in preference if model.lower() in entitled),
-                        "",
-                    )
+            if not api_key:
+                return ""
+            cache_key = (vision, base_url, hmac.digest(_AUX_CACHE_KEY, api_key.encode(), "sha256"))
+            if cache_key in cache:
+                return cache[cache_key]
+            live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
+            if live:
+                entitled = {model.lower() for model in live}
+                preference = _VISION_AUX_PREFERENCE if vision else _AUX_PREFERENCE
+                resolved = next(
+                    (model for model in preference if model.lower() in entitled),
+                    "",
+                )
         except Exception:
             # Never raise from a client-resolution path. An empty string is
             # the documented "no answer" value and keeps default_aux_model.
-            resolved = ""
-
-        cache[vision] = resolved
+            if cache_key is None:
+                return ""
+        cache[cache_key] = resolved
         return resolved
 
     def build_api_kwargs_extras(
@@ -260,9 +291,8 @@ alibaba_token_plan = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
@@ -290,9 +320,8 @@ alibaba_token_plan_cn = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
@@ -329,9 +358,8 @@ alibaba_token_plan_team = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qwencloudapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified
@@ -362,9 +390,8 @@ alibaba_token_plan_cn_team = QwenTokenPlanProfile(
     base_url="https://token-plan.maas.qianwenaiapi.com/compatible-mode/v1",
     auth_type="api_key",
     # /models responds on every Token Plan endpoint, so let `hermes doctor`
-    # probe it. The plan's catalogue is incomplete (deepseek-v4-pro-0813
-    # answers requests but is absent from the list), which makes the probe a
-    # reachability and credential check rather than a catalogue check.
+    # probe it. Listing establishes reachability and credential discovery,
+    # not current inference health or entitlement for every exact model ID.
     supports_health_check=True,
     supports_vision=True,
     # Alibaba's OpenAI-compatible endpoint accepts prompt_cache_key (verified

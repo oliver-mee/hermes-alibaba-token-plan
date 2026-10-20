@@ -121,3 +121,42 @@ merge commits may be used when preserving meaningful contributor history.
 
 See [RELEASING.md](RELEASING.md) for the maintainer-only release process and
 [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
+## Combined media and native package checks
+
+The default `python -m pytest -q` runs this repository's `tests/` only. Without
+`HERMES_AGENT_REPO`, native-host checks skip and standalone contracts still run.
+For the complete offline provider/dispatcher coverage:
+
+```bash
+HERMES_AGENT_REPO=/path/to/reviewed/hermes-agent \
+  python -m pytest -q --ignore=tests/test_native_package.py
+```
+
+Native package-manager lifecycle checks additionally require Hermes's real PM
+runtime and public dependency closure. Prepare it in a **new scratch directory**
+from a clean pinned Hermes checkout, using a normal bootstrap Python:
+
+```bash
+python3 scripts/prepare-native-package-tests.py \
+  --hermes-repo /path/to/reviewed/hermes-agent \
+  --scratch-dir /tmp/token-plan-native-tests
+```
+
+Use the emitted scratch `HERMES_AGENT_REPO` and `HERMES_NATIVE_PACKAGE_SEED`
+values when running `tests/test_native_package.py`. The preparer defaults to
+Hermes v0.22.0's exact SHA; another reviewed SHA must be explicit. It archives
+committed sources only, never the operator's untracked files or active runtime.
+
+Set `HERMES_NATIVE_PACKAGE_DOWNLOADS=1` for lifecycle/pack tests when upstream PM
+needs to revalidate public dependency metadata. That mode permits public PM
+worker downloads in isolated test homes; it does not access account credentials
+or invoke a provider. These are **no-inference lifecycle checks**, not entirely
+offline tests. Admission/collision tests retain network denial (Linux requires
+libseccomp; macOS uses sandbox-exec). Without the explicit download mode, PM
+lifecycle tests keep the strict offline boundary and fail on missing/revalidated
+metadata rather than pretending that installation was accepted.
+
+Do not run admission `--install-deps` in the production Hermes environment.
+Check that dependency preparation succeeded: a subsequent static validation
+report alone does not prove that the native dependency transaction completed.
