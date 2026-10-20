@@ -10,13 +10,16 @@ has been measured.
 
 from __future__ import annotations
 
-import hashlib
+import hmac
 import inspect
 import os
 from typing import Any
 
 from providers import register_provider
 from providers.base import ProviderProfile
+
+# Cache identities are private to this loaded plugin and never persist keys.
+_AUX_CACHE_KEY = os.urandom(32)
 
 # Native and legacy shell installation use different discovery locations.
 # Refuse an ambiguous duplicate instead of silently overriding another copy.
@@ -156,7 +159,7 @@ class QwenTokenPlanProfile(ProviderProfile):
         except ModuleNotFoundError as exc:
             if exc.name not in {"agent", "agent.secret_scope"}:
                 raise
-            # Older supported hosts predate scoped secrets. Never fall back
+            # Hosts without scoped secrets use the environment. Never fall back
             # after a scoped lookup fails or an active scope lacks a key.
             get_secret = os.environ.get
         api_key = None
@@ -195,7 +198,7 @@ class QwenTokenPlanProfile(ProviderProfile):
             api_key, base_url = self._resolve_credentials()
             if not api_key:
                 return ""
-            cache_key = (vision, base_url, hashlib.sha256(api_key.encode()).digest())
+            cache_key = (vision, base_url, hmac.digest(_AUX_CACHE_KEY, api_key.encode(), "sha256"))
             if cache_key in cache:
                 return cache[cache_key]
             live = self.fetch_models(api_key=api_key, base_url=base_url, timeout=4.0)
