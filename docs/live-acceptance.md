@@ -1,67 +1,49 @@
-# Authorised live acceptance gate
+# Live validation procedure
 
-Status: **Owner authorised the necessary live acceptance checks on 2026-10-20;
-results are recorded separately in validation.md.** The owner also selected
-version 2.0.0 and authorised release after testing. This is an interactive
-check, not an unattended batch. Keep the maximum below and stop on unexpected
-billing or errors.
+Live checks require explicit operator permission for the account, operations,
+maximum submissions and possible cost. Agree those bounds privately before
+accessing credentials or making requests. Record technical outcomes in
+[validation](validation.md), without personal messages or account identifiers.
 
-Use a dedicated temporary Hermes profile with the reviewed package and no
-unrelated hooks/tools. Preserve production defaults. The operator must identify
-one Global Team subscription, one Global Personal subscription for ASR/chat,
-the private Telegram test destination and an available Desktop/CLI client.
-Only canonical scoped Token Plan credentials may be supplied. Never print them
-or copy them into the repository, pack, configuration examples or public logs.
+## Prepare an isolated check
 
-| Operation | Model/input | Maximum paid submissions |
-|---|---|---|
-| Chat | `qwen3.7-plus`, one short fixed-answer prompt on Global Personal and Team, output cap 32 tokens | 2 |
-| Image | `qwen-image-2.0`, `qwen-image-2.0-pro`, `wan2.7-image`, `wan2.7-image-pro`; one text generation and one edit each; synthetic source, `n=1`, 1024*1024 | 8 |
-| Video | `happyhorse-1.1-t2v`, `happyhorse-1.1-i2v`, `happyhorse-1.1-r2v`, `wan3.0-video`; one documented five-second request each, 720p, synthetic first frame/reference where required | 4 |
-| TTS | `qwen-audio-3.0-tts-plus`; English with `longanlingxin`, Chinese with `longanlufeng`, at most 40 characters each | 2 |
-| ASR | `qwen-audio-3.0-asr-flash`; one known English and one Chinese recording, each at most five seconds | 2 |
+Use a dedicated temporary Hermes profile containing the reviewed plugin and
+only the tools/hooks needed for the check. Preserve the normal profile and its
+provider settings. Use the correct region/tier credential through Hermes's
+scoped secret mechanism; Token Plan and PAYG keys are different billing lanes.
+Never print keys or include them in source, packs, examples or public logs.
 
-Maximum: **18 inference submissions**, performed one at a time. At most 60 GET
-result reads per asynchronous job, stopping at five minutes. Use the existing
-native dispatcher for every check. Bound chat/token output and source sizes;
-never run an autonomous agent loop that can create extra paid calls.
+Select the smallest useful operation for the capability being checked:
 
-## Approved execution bounds
+| Capability | Bounded input |
+|---|---|
+| Chat | A short fixed-answer prompt with a small output-token cap. |
+| Image generation/editing | One synthetic image, `n=1`, at a supported size. |
+| Video | One shortest supported clip; use a synthetic source frame where needed. |
+| TTS | One short phrase with a voice supported by the exact model. |
+| File ASR | A short recording with known words and a supported input format. |
 
-The owner authorised the necessary tests after reviewing this proposed maximum
-18-call scope. No numeric credit ceiling was supplied; do not invent one or
-report public PAYG prices as measured Token Plan deductions. Use only the
-personal-estate Global Personal and Team subscriptions through scoped `sk-sp-`
-keys. No PAYG keys, credit purchases, subscription changes or automatic top-ups.
-Current public Token Plan quota documentation says calls are blocked when the
-subscription allowance is exhausted. Record any returned usage/debit, and mark
-unavailable metering explicitly rather than inferring it from token counts.
+Use native Hermes dispatch. Reserve each permitted submission before executing
+it and inspect the outcome before continuing. Bound uploads, downloads, result
+reads and polling deadlines. Stop on an unexpected error, debit or ambiguous
+submission; do not automatically repeat a paid POST. A confirmed local
+pre-submission failure can be corrected offline, but a subsequent live attempt
+still counts against the agreed limit. Avoid autonomous agent loops and load
+or batch tests.
 
-Submit one case at a time, reserve it in the acceptance ledger before execution,
-and inspect its outcome before the next case. Stop on the first unexpected
-error, debit or ambiguous result. Never automatically resubmit a POST or repeat
-an unknown-outcome request. A definite pre-submission validation failure may be
-fixed offline; any further live submission still counts towards the maximum.
+## Inspect the result
 
-Global host: `token-plan.maas.qwencloudapi.com`. Chat uses
-`/compatible-mode/v1/chat/completions`; image/ASR use their documented native
-`/api/v1/services/aigc/.../generation` routes; video uses the native async
-video-synthesis route; TTS uses `wss://.../api-ws/v1/inference`. Poll only the
-returned task IDs on this host. CN and other profile combinations are excluded.
+Decode image, audio and video outputs; check dimensions, duration and content.
+Compare transcription with the known words, allowing punctuation differences.
+Use actual delivery and manual playback checks for the intended client surface.
+A successful API response or model listing is not playback or inference-health
+proof. Reuse completed artifacts for delivery checks when possible.
 
-## Acceptance and evidence
+Record the date, provider/model/mode, request count and technical result.
+Report returned usage or measured debit only when available; do not substitute
+PAYG card prices or token counts for measured subscription deductions. Keep
+private execution logs and operational identifiers outside the public repo.
 
-Inspect every returned image at its requested dimensions; decode generated
-videos/audio and verify video duration, audible speech and sensible content.
-Compare ASR against the known phrase, allowing punctuation/spacing differences.
-Record the exact provider/model/mode, bounded call count, date, result and
-observed debit without credentials or account identifiers in public evidence.
-
-Use the planned ASR calls for Telegram voice input and file-based Desktop/CLI
-transcription where available. Reuse generated speech/image/video artifacts for
-actual Telegram and Desktop/CLI delivery/playback without further inference.
-Operator playback observation is required; a synthetic byte fixture is not proof
-of playable speech. Remove the temporary profile and restore prior selections
-after testing. If any surface is unavailable, mark it Not run and keep the
-release acceptance gate pending. Untested regions/tiers retain explicit
-experimental status; a successful Global Team check does not establish CN health.
+Remove temporary profiles through Hermes's supported lifecycle and restore
+client selections after testing. Mark any unperformed check as Not run without
+inferring that an untested region or tier uses a different protocol.
