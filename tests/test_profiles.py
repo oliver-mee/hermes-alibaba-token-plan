@@ -22,6 +22,7 @@ PERSONAL_MODELS = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017",
     "glm-5.2",
     "glm-5.3",
 )
@@ -36,6 +37,7 @@ TEAM_MODELS = (
     "deepseek-v4-pro-0813",
     "deepseek-v4-flash-0731",
     "deepseek-v4.1-flash",
+    "deepseek-v4.1-flash-1017",
     "kimi-k2.7-code",
     "kimi-k2.6",
     "kimi-k2.5",
@@ -175,6 +177,7 @@ def test_discovery_filters_personal_and_preserves_canonical_order(
             "deepseek-v4-pro-0813",
             "deepseek-v4-flash-0731",
             "deepseek-v4.1-flash",
+            "deepseek-v4.1-flash-1017",
             "qwen3.6-flash",
             "qwen3.7-max",
             "glm-5.3",

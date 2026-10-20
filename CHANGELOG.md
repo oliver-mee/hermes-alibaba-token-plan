@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Add `deepseek-v4.1-flash-1017` to Personal and Team chat discovery in both
+  regions. Global Personal capability checks on 2026-10-20 verified completion,
+  thinking-off, low reasoning effort, tool calls, user/tool-result vision and
+  Responses API. Strict JSON Schema and logprobs are rejected by the gateway.
+
 ## 1.5.6
 
 - Remove retired `deepseek-v3.2` and bare `deepseek-v4-flash` from Team chat
