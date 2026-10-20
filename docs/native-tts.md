@@ -1,7 +1,7 @@
 # Native Token Plan TTS
 
 This optional backend uses Hermes's existing `text_to_speech` tool and automatic
-voice replies. It requires Hermes **v0.22.0 or newer**, Python 3.11–3.13 and
+voice replies. It requires Hermes **v0.22.0 or newer**, Python 3.11+ and
 `websockets >=14,<17` in the Hermes environment. The shell installer never installs
 runtime dependencies, enables plugins, or changes chat, speech or voice defaults.
 The coordinated 2.0.0 release pack installs chat and the combined media plugin

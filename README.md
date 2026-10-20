@@ -44,7 +44,7 @@ Completions transport.
 - Native media and installation packs: Hermes Agent v0.22.0+
 - Media dependencies: `httpx>=0.28,<0.29`, `websockets>=14,<17`
 - Voice-note conversion/delivery: existing ffmpeg and ffprobe when required
-- Python 3.11 through 3.13
+- Python 3.11+ with a version supported by your Hermes release
 - Linux or macOS
 
 CI tests the compatibility points above. The scheduled advisory check tracks
