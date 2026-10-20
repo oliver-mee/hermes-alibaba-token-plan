@@ -61,7 +61,6 @@ TEAM_MODELS = (
 # discovery omits these ids regardless). The plugin must keep offering them
 # at call time even though live discovery never returns them.
 UNLISTED_MODELS = (
-    "deepseek-v4-pro-0813",
 )
 
 # Media entitlement metadata, NOT Chat Completions picker entries.

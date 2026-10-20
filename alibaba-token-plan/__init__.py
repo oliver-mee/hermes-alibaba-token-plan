@@ -108,9 +108,10 @@ class QwenTokenPlanProfile(ProviderProfile):
 
         UNLISTED_MODELS are kept even though live discovery never returns them:
         the gateway answers these ids with HTTP 200 by exact id but
-        deliberately omits them from /models (measured 2026-08-18 and
-        2026-08-31 — deepseek-v4-pro-0813 serves on both tiers while absent
-        from the listing). Dropping them makes selectable, working models
+        deliberately omits them from /models. The historical example was
+        deepseek-v4-pro-0813 (2026-08-18 and 2026-08-31); it is listed again
+        as of 2026-10-20 and no longer needs this exception. Dropping genuinely
+        unlisted ids makes selectable, working models
         vanish from the picker, so they are appended when live discovery
         succeeds. They are still gated by the per-tier catalogue: a team-only
         unlisted id never appears on a personal profile.

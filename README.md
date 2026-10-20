@@ -99,8 +99,8 @@ Do not put keys in source files, `config.yaml`, screenshots, or logs. Token Plan
 Authenticated `/models` discovery remains enabled. The response is intersected with each provider's own measured tier catalogue, preserving canonical order and excluding image, video, audio, and unknown IDs. One explicit exception is `UNLISTED_MODELS`: IDs that are absent from `/models` but have been proven callable by exact ID are retained so they remain selectable.
 
 <!-- BEGIN GENERATED:tier-summary -->
-- Personal keys currently resolve to 12 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
-- Team keys currently resolve to 19 chat models, including `deepseek-v4-pro-0813` (servable by exact ID but omitted from `/models`).
+- Personal keys currently resolve to 12 chat models.
+- Team keys currently resolve to 19 chat models.
 - If discovery fails or no key is configured, the Personal providers use the Personal list of 12 as the offline fallback; the Team providers fall back to the Team list of 19.
 <!-- END GENERATED -->
 

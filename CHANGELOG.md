@@ -6,6 +6,9 @@
   regions. Global Personal capability checks on 2026-10-20 verified completion,
   thinking-off, low reasoning effort, tool calls, user/tool-result vision and
   Responses API. Strict JSON Schema and logprobs are rejected by the gateway.
+- Remove the discovery exception for `deepseek-v4-pro-0813`: it is listed again
+  on Global Personal, Global Team and China Team as of 2026-10-20. Keep the
+  generic unlisted-model mechanism covered with an explicit test fixture.
 
 ## 1.5.6
 

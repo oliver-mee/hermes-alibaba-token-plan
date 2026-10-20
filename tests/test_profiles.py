@@ -200,12 +200,10 @@ def test_discovery_filters_team_and_both_regions_match(
 def test_discovery_handles_unknown_only_and_failed_fetch(
     mock_providers_package, monkeypatch
 ):
-    # With a live response of only unknown ids, no ID is promoted — except the
-    # catalogue's unlisted-but-servable ids (deepseek-v4-pro-0813), which are
-    # kept even though live discovery never returns them (see fetch_models docstring).
+    # A successful response with only unknown or non-chat ids promotes nothing.
     _set_live(monkeypatch, ["qwen-image-2.0", "unknown"])
     profile = load_plugin().alibaba_token_plan
-    assert profile.fetch_models(api_key="synthetic") == ["deepseek-v4-pro-0813"]
+    assert profile.fetch_models(api_key="synthetic") == []
 
     _set_live(monkeypatch, None)
     assert profile.fetch_models(api_key="synthetic") is None
@@ -214,13 +212,13 @@ def test_discovery_handles_unknown_only_and_failed_fetch(
 def test_discovery_keeps_unlisted_models_when_absent_from_live(
     mock_providers_package, monkeypatch
 ):
-    """Unlisted-but-servable ids survive discovery even when /models omits them.
+    """Keep coverage for callable-but-unlisted catalogue entries.
 
-    deepseek-v4-pro-0813 answers HTTP 200 by exact id on both tiers yet is
-    deliberately absent from the /models listing (probed 2026-08-18 &
-    2026-08-31). It must stay selectable, so fetch_models returns it alongside
-    the live entitlement. Team-only unlisted ids must not leak to Personal.
+    Simulate the historical 0813 omission without claiming it remains unlisted:
+    GET /models now returns it, verified 2026-10-20.
     """
+    plugin = load_plugin()
+    monkeypatch.setattr(plugin, "UNLISTED_MODELS", ("deepseek-v4-pro-0813",))
     live = [
         "qwen3.8-max",
         "qwen3.8-flash",
@@ -232,11 +230,11 @@ def test_discovery_keeps_unlisted_models_when_absent_from_live(
         "glm-5.2",
     ]  # note: deepseek-v4-pro-0813 absent from live
     _set_live(monkeypatch, live)
-    personal = load_plugin().alibaba_token_plan
+    personal = plugin.alibaba_token_plan
     assert "deepseek-v4-pro-0813" in personal.fetch_models(api_key="synthetic")
 
-    # team profile also keeps it, in canonical order
-    team = load_plugin().alibaba_token_plan_team
+    # Team profile also keeps it, in canonical order.
+    team = plugin.alibaba_token_plan_team
     result = team.fetch_models(api_key="synthetic")
     assert "deepseek-v4-pro-0813" in result
     assert result == [m for m in TEAM_MODELS if m in live or m == "deepseek-v4-pro-0813"]
