@@ -67,11 +67,12 @@ UNLISTED_MODELS = (
 MEDIA_MODELS = (
     ('qwen-audio-3.0-tts-plus', 'tts', ('team', 'personal'), ('global', 'cn')),
     ('qwen-audio-3.0-realtime-plus', 'realtime', ('team', 'personal'), ('global', 'cn')),
-    ('qwen-audio-3.0-asr-flash', 'asr', ('personal',), ('global',)),
+    ('qwen-audio-3.0-asr-flash', 'asr', ('team', 'personal'), ('global', 'cn')),
     ('qwen-image-2.0', 'image', ('team',), ('global', 'cn')),
     ('qwen-image-2.0-pro', 'image', ('team',), ('global', 'cn')),
     ('wan2.7-image', 'image', ('team', 'personal'), ('global', 'cn')),
     ('wan2.7-image-pro', 'image', ('team', 'personal'), ('global', 'cn')),
+    ('qwen-image-3.0-pro', 'image', ('team', 'personal'), ('global', 'cn')),
     ('happyhorse-1.1-t2v', 'video', ('team', 'personal'), ('global', 'cn')),
     ('happyhorse-1.1-i2v', 'video', ('team', 'personal'), ('global', 'cn')),
     ('happyhorse-1.1-r2v', 'video', ('team', 'personal'), ('global', 'cn')),

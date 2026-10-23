@@ -1,5 +1,21 @@
 # Validation
 
+## October 23 catalogue and routing update
+
+The 2.0.1 update adds explicit Qwen Image 3.0 Pro generation/edit selection and
+four isolated ASR account routes through existing native providers. Free model
+listing confirms 29 Global Team, 20 Global Personal and 29 China Team IDs. China
+Personal is documented, not keyed. Image3 Token Plan inference and Team/China
+ASR inference were not run; no paid calls or new billing evidence. Historical
+October20 results below remain scoped to their actual models/accounts. Operator
+configuration, defaults, credentials and services were not changed.
+
+Mocked real-Hermes discovery and normal image/transcription dispatch cover the
+new exact model and regional credentials; Image2/Wan and the original ASR ID
+retain regression coverage. The non-PM suite passed 393 tests with 8 documented
+outer native-video skips on this candidate before documentation-only updates.
+Native package and hosted final-head gates are recorded in the release PR.
+
 Validation completed on 2026-10-20. Offline integration, package installation,
 live inference and manual playback were checked separately.
 
@@ -64,7 +80,8 @@ The canonical chat catalogue is pinned to public Token Plan Wiki snapshot
 [`3dd82cea`](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/3dd82cea88b19c436d5c11a622980c972a6ba1c4/data/models.json).
 Generated Personal/Team ordering and both self-contained catalogue files match.
 Existing chat names, aliases, endpoints and credential namespaces remain
-compatible. Native ASR currently exposes Global Personal only.
+compatible. Native ASR exposes four isolated accounts; only Global Personal
+has dated live inference evidence.
 
 Native admission reports private host-helper imports for existing safety,
 conversion and interruption handling. These compatibility warnings remain

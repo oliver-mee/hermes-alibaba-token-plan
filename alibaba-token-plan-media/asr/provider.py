@@ -122,9 +122,11 @@ def normalise(file_path):
         return data
 
 
-def post(payload, key):
+def post(payload, key, host="token-plan.maas.qwencloudapi.com"):
     """Single attempt, fixed host, no redirects, bounded response, no error-body leakage."""
-    connection = http.client.HTTPSConnection("token-plan.maas.qwencloudapi.com", timeout=60)
+    if host not in {"token-plan.maas.qwencloudapi.com", "token-plan.maas.qianwenaiapi.com"}:
+        raise ASRError("Unsupported ASR regional host")
+    connection = http.client.HTTPSConnection(host, timeout=60)
     deadline = time.monotonic() + 60
     try:
         connection.request("POST", ROUTE, body=json.dumps(payload), headers={
@@ -187,29 +189,44 @@ def extract_transcript(payload):
     return text.strip()  # explicit empty transcript is valid silence
 
 
+PROFILES = {
+    "alibaba-token-plan-asr": ("global", "personal", "token-plan.maas.qwencloudapi.com", KEYS),
+    "alibaba-token-plan-team-asr": ("global", "team", "token-plan.maas.qwencloudapi.com",
+                                   ("ALIBABA_TOKEN_PLAN_TEAM_API_KEY",)),
+    "alibaba-token-plan-cn-asr": ("cn", "personal", "token-plan.maas.qianwenaiapi.com",
+                                 ("ALIBABA_TOKEN_PLAN_CN_API_KEY", "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY")),
+    "alibaba-token-plan-cn-team-asr": ("cn", "team", "token-plan.maas.qianwenaiapi.com",
+                                      ("ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY",)),
+}
+
+
 class TokenPlanASR(TranscriptionProvider):
+    def __init__(self, name="alibaba-token-plan-asr"):
+        self._name = name
+        self.region, self.tier, self.host, self.keys = PROFILES[name]
+
     @property
     def name(self):
-        return "alibaba-token-plan-asr"
+        return self._name
 
     @property
     def display_name(self):
-        return "Token Plan ASR (Global Personal)"
+        return f"Token Plan ASR ({'Global' if self.region == 'global' else 'China'} {self.tier.title()})"
 
     def list_models(self):
         return catalogue()
 
     def is_available(self):
         try:
-            return any(get_secret(key) for key in KEYS)
+            return any(get_secret(key) for key in self.keys)
         except Exception:
             return False
 
     def get_setup_schema(self):
         return {"name": self.display_name, "badge": "paid",
                 "tag": "File transcription; historical Global Personal evidence only",
-                "env_vars": [{"key": KEYS[-1], "prompt": "Global Personal Token Plan key",
-                              "url": "https://www.qwencloud.com/"}]}
+                "env_vars": [{"key": self.keys[-1], "prompt": f"{self.display_name} key",
+                              "url": "https://www.qwencloud.com/" if self.region == "global" else "https://www.qianwenai.com/"}]}
 
     def transcribe(self, file_path, *, model=None, language=None, **extra):
         try:
@@ -217,15 +234,16 @@ class TokenPlanASR(TranscriptionProvider):
             if model not in {item["id"] for item in self.list_models()}:
                 raise ASRError("Unsupported Token Plan ASR model")
             if language not in (None, "", "auto") or extra.get("prompt"):
-                raise ASRError("Language and prompt hints are unverified for this exact model; set stt.alibaba-token-plan-asr.language: auto and clear stt.prompt / pre_transcription prompt hints")
-            key = next((value for name in KEYS if (value := get_secret(name))), None)
+                raise ASRError(f"Language and prompt hints are unverified for this exact model; set stt.{self.name}.language: auto and clear stt.prompt / pre_transcription prompt hints")
+            key = next((value for name in self.keys if (value := get_secret(name))), None)
             if not key:
-                raise ASRError("Set ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY (Global Personal); no PAYG fallback", "credential")
+                raise ASRError(f"Set {self.keys[-1]} for {self.display_name}; no PAYG fallback", "credential")
             audio = normalise(file_path)
             payload = {"model": model, "input": {"messages": [{"role": "user", "content": [
                 {"type": "input_audio", "input_audio": {"data": "data:audio/wav;base64," + base64.b64encode(audio).decode("ascii")}}
             ]}]}, "parameters": {"format": "wav", "sample_rate": "16000"}}
-            transcript = extract_transcript(post(payload, key))
+            result = post(payload, key, self.host)
+            transcript = extract_transcript(result)
             return {"success": True, "transcript": transcript, "provider": self.name}
         except ASRError as exc:
             # Only our fixed validation messages may reach callers, never server bodies/paths.

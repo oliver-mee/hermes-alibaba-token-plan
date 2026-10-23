@@ -44,8 +44,8 @@ manager = PluginManager()
 manager.discover_and_load()
 p = image_gen_registry.get_provider("alibaba-token-plan")
 assert p is not None, "Native image plugin not discovered"
-assert len(p.list_models()) == 2
-assert len(image_gen_registry.get_provider("alibaba-token-plan-team").list_models()) == 4
+assert len(p.list_models()) == 3
+assert len(image_gen_registry.get_provider("alibaba-token-plan-team").list_models()) == 5
 assert not p.is_available(), "Synthetic home must have no credentials"
 
 from tools.image_generation_tool import _handle_image_generate, _build_dynamic_image_schema
@@ -129,6 +129,31 @@ try:
 finally:
     reset_secret_scope(token)
     config_path.write_text(original_config)
+
+# Explicit Image3 selection uses the same native tool for generation and edits.
+# It must never become the default or silently replace Qwen2/Wan.
+assert p.default_model() == "wan2.7-image"
+for slug, key in (("alibaba-token-plan", "ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY"),
+                  ("alibaba-token-plan-team", "ALIBABA_TOKEN_PLAN_TEAM_API_KEY"),
+                  ("alibaba-token-plan-cn", "ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY"),
+                  ("alibaba-token-plan-cn-team", "ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY")):
+    config_path.write_text("plugins:\n  enabled: [alibaba-token-plan-media]\n"
+                          f"image_gen:\n  provider: {slug}\n  model: qwen-image-3.0-pro\n")
+    token = set_secret_scope({key: "synthetic-image3"})
+    try:
+        before = len(calls)
+        for args in ({"prompt": "cloud"}, {"prompt": "blue", "image_url": inline}):
+            result = json.loads(_handle_image_generate(args))
+            assert result["success"] and result["model"] == "qwen-image-3.0-pro", result
+        assert len(calls) == before + 2
+        for call in calls[before:]:
+            assert call[0] == ("token-plan.maas.qianwenaiapi.com" if "-cn" in slug else "token-plan.maas.qwencloudapi.com")
+            assert call[3]["model"] == "qwen-image-3.0-pro"
+            assert call[2].endswith("multimodal-generation/generation")
+            assert "X-DashScope-Async" not in call[4]
+    finally:
+        reset_secret_scope(token)
+        config_path.write_text(original_config)
 
 own_home = get_hermes_home()
 profile_a, profile_b = own_home / "profile-a", own_home / "profile-b"
