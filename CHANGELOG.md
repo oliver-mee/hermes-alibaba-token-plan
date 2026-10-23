@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1 (2026-10-23)
+
+- Add released, newly Token Plan-listed `qwen-image-3.0-pro` to the existing
+  native image provider for explicit generation/edit selection. Preserve Image2
+  and Wan fallback order and operator selections. Exact-ID live inference and
+  credit debit remain unverified.
+- Graduate file ASR to the listed catalogue and expose isolated Global/China
+  Personal/Team transcription providers. Preserve `alibaba-token-plan-asr`, its
+  legacy-first Personal keys, the existing payload and 180-second safety bound.
+  Team/China inference remains unverified; no paid probes or default changes.
+- Refresh generated media exports and documentation from the October23 wiki.
+
+
 ## 2.0.0
 
 This major release changes the installation contract from the 1.x chat-only

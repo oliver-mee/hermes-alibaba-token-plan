@@ -81,6 +81,22 @@ def provider(image, name="alibaba-token-plan"):
     return image.TokenPlanImageProvider(name)
 
 
+
+
+@pytest.mark.parametrize("name", list(("alibaba-token-plan", "alibaba-token-plan-team",
+                                     "alibaba-token-plan-cn", "alibaba-token-plan-cn-team")))
+def test_image3_explicit_selection_preserves_defaults(image, wire, name):
+    calls, replies = wire
+    replies.extend([success(), success()])
+    p = provider(image, name)
+    assert p.default_model() == ("wan2.7-image" if p.tier == "personal" else "qwen-image-2.0")
+    for kwargs in ({}, {"image_url": "data:image/png;base64," + base64.b64encode(PNG).decode()}):
+        result = p.generate("cloud", model="qwen-image-3.0-pro", **kwargs)
+        assert result["success"] and result["model"] == "qwen-image-3.0-pro"
+    assert len(calls) == 2
+    assert all(c[3] == image.SYNC_PATH and c[4]["model"] == "qwen-image-3.0-pro" for c in calls)
+
+
 def test_registration_catalogue_and_evidence(image):
     registered = []
     image.register(types.SimpleNamespace(register_image_gen_provider=registered.append))
@@ -89,7 +105,7 @@ def test_registration_catalogue_and_evidence(image):
     assert [r["id"] for r in image.CATALOGUE] == [r[0] for r in source if r[1] == "image"]
     for p in registered:
         rows = p.list_models()
-        assert len(rows) == (2 if p.tier == "personal" else 4)
+        assert len(rows) == (3 if p.tier == "personal" else 5)
         assert not any(r["inference_verified"] for r in rows)
         assert p.get_setup_schema()["env_vars"][0]["key"] == p.keys[-1]
         assert all("unverified" in r["endpoint"] for r in image.CATALOGUE)

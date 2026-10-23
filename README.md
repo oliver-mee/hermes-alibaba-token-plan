@@ -6,7 +6,7 @@
 
 [Hermes Agent](https://github.com/NousResearch/hermes-agent) integration for Alibaba Token Plan: chat plus opt-in native image, video, speech synthesis and file transcription. Qwen Cloud is an alternate console view of the same plan, not a separate product.
 
-Version 2.0.0 contains two coordinated components: the improved, backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. See [validation](docs/validation.md) for native integration, package lifecycle and dated live/playback results.
+Version 2.0.1 contains two coordinated components: the improved, backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. See [validation](docs/validation.md) for native integration, package lifecycle and dated live/playback results.
 
 The major version marks the move from the 1.x chat-only distribution to a
 coordinated chat and media installation. Native pack consent enables both
@@ -142,7 +142,7 @@ callable despite being absent from `/models`. Update it by regenerating upstream
 and copying the file over, never by hand-editing the tuples.
 
 The current export follows the public wiki's
-[2026-10-20 snapshot](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/3dd82cea88b19c436d5c11a622980c972a6ba1c4/data/models.json).
+[2026-10-23 snapshot](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/56533ed251c632925f5242070c136542de07cd10/data/models.json).
 It includes `deepseek-v4.1-flash-1017` in both chat tiers and has no current
 unlisted chat exceptions. `deepseek-v4-pro-0813` is listed again; its older
 absence observations are historical.
@@ -212,16 +212,31 @@ entitlement does not establish successful inference or a measured credit charge.
 <!-- BEGIN GENERATED:media-catalogue -->
 - `qwen-audio-3.0-tts-plus` (tts; team, personal; global, cn)
 - `qwen-audio-3.0-realtime-plus` (realtime; team, personal; global, cn)
-- `qwen-audio-3.0-asr-flash` (asr; personal; global)
+- `qwen-audio-3.0-asr-flash` (asr; team, personal; global, cn)
 - `qwen-image-2.0` (image; team; global, cn)
 - `qwen-image-2.0-pro` (image; team; global, cn)
 - `wan2.7-image` (image; team, personal; global, cn)
 - `wan2.7-image-pro` (image; team, personal; global, cn)
+- `qwen-image-3.0-pro` (image; team, personal; global, cn)
 - `happyhorse-1.1-t2v` (video; team, personal; global, cn)
 - `happyhorse-1.1-i2v` (video; team, personal; global, cn)
 - `happyhorse-1.1-r2v` (video; team, personal; global, cn)
 - `wan3.0-video` (video; team, personal; global, cn)
 <!-- END GENERATED -->
+
+## October 23 media catalogue update
+
+`qwen-image-3.0-pro` is vendor-released and now Token Plan-listed, not a future
+launch. Explicitly select it using the existing native image provider; working
+Image2/Wan selections and fallback defaults are unchanged. Generation/editing
+is covered with mocked native dispatch, not paid Image3 inference.
+
+File ASR now has four isolated accounts. Keep `alibaba-token-plan-asr` for Global
+Personal, or explicitly select `alibaba-token-plan-team-asr`,
+`alibaba-token-plan-cn-asr`, or `alibaba-token-plan-cn-team-asr`. Each uses only
+its own region/tier key. Listing does not establish current Team/China inference
+or billing. Streaming remains disabled, with the conservative 180-second input
+bound unchanged. See [ASR](NATIVE-ASR.md).
 
 ## Native file transcription (opt-in)
 

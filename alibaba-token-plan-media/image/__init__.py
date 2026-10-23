@@ -27,6 +27,7 @@ CATALOGUE = json.loads(Path(__file__).with_name("catalogue.json").read_text())
 CONTRACTS = {
     "qwen-image-2.0": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2},
     "qwen-image-2.0-pro": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2},
+    "qwen-image-3.0-pro": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2},
     "wan2.7-image": {"async": True, "sources": 9, "min_pixels": 768**2, "max_pixels": 2048**2},
     "wan2.7-image-pro": {"async": True, "sources": 9, "min_pixels": 768**2, "max_pixels": 4096**2},
 }

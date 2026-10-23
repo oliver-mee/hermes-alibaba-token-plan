@@ -1,5 +1,24 @@
 # Native Token Plan file transcription
 
+## October 23 listing graduation
+
+The existing file-ASR model is now listed on Global Personal/Team and China
+Team; China Personal is documented, not keyed. The existing Global Personal
+provider ID `alibaba-token-plan-asr` and credential precedence are unchanged.
+New explicit providers are `alibaba-token-plan-team-asr`,
+`alibaba-token-plan-cn-asr` and `alibaba-token-plan-cn-team-asr`, using the
+matching canonical `ALIBABA_TOKEN_PLAN_*_API_KEY` only (China Personal also
+retains its own legacy alias). No cross-account or PAYG fallback. Select the
+provider under `stt.provider` and set its own language to `auto`.
+
+All use the existing synchronous multimodal HTTP payload and native transcription
+pipeline. New account routing is mocked-integration tested; actual Team/China
+inference and debit are unverified. Existing historical Global Personal live
+results remain dated evidence. The 180-second/7-MiB safety caps and disabled
+streaming are unchanged. Older Global-Personal-only/unlisted statements below
+describe the pre-October23 implementation and evidence.
+
+
 This opt-in directory plugin implements Hermes `TranscriptionProvider` using
 `qwen-audio-3.0-asr-flash` and synchronous HTTP POST to
 `https://token-plan.maas.qwencloudapi.com/api/v1/services/aigc/multimodal-generation/generation`.

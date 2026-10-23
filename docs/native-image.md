@@ -16,10 +16,12 @@ image rows contain no proven unlisted image model. Advertised badges and
 `/models` membership do not establish successful generation or credit charges.
 Canonical metadata separately records `Z-Image-Turbo` and `Qwen-Image-Plus` as
 advertised but unreachable (`Model not exist`, historical 2026-07-21 checks).
-It also records the shared-doc Qwen Image 3.0 launch as outside the Token Plan
-gateway on 2026-08-05. Those names are deliberately not selectable here;
-current marketing is not fresh inference evidence. The proven unlisted chat
-and ASR rows establish no additional image model entitlement.
+Qwen Image 3.0 Pro already shipped in August. On 2026-10-23 its exact ID
+`qwen-image-3.0-pro` became listed on all keyed plans; CN Personal is documented
+but unkeyed. It is now explicitly selectable through the same synchronous
+image provider, for generation and editing. Token Plan Image3 inference and
+credit debit remain unverified; no paid probe was run. This supersedes the
+historical August off-plan observation, not the working Image2/Wan contracts.
 
 | Exact ID | Global Personal | Global Team | CN Personal | CN Team | Request contract implemented |
 |---|---|---|---|---|---|
@@ -27,6 +29,7 @@ and ASR rows establish no additional image model entitlement.
 | `qwen-image-2.0-pro` | Not listed | Listed | Not listed | Listed | Synchronous generation/editing |
 | `wan2.7-image` | Listed | Listed | Listed | Listed | Async generation/editing |
 | `wan2.7-image-pro` | Listed | Listed | Listed | Listed | Async generation/editing |
+| `qwen-image-3.0-pro` | Listed | Listed | Documented, unkeyed | Listed | Synchronous generation/editing, inference unverified |
 
 The table records catalogue eligibility, not current inference health. Global
 Personal generation and editing on both Wan variants passed native Hermes
@@ -43,7 +46,7 @@ a new model family.
 ## Install and configure
 
 Image is part of the combined `alibaba-token-plan-media` package, coordinated
-with chat at version 2.0.0. The release pack enables both components after
+with chat at version 2.0.1. The release pack enables both components after
 interactive consent; select the desired image provider separately. See
 [installation](installation.md) for the pack and shell workflows.
 
@@ -118,6 +121,13 @@ ignored as required by Hermes's ABC; unknown configuration options are rejected.
 | `thinking_mode` | Rejected | Boolean, text-only; rejected for edits |
 | `n` | Exactly 1, plugin spend bound | Exactly 1, plugin spend bound |
 | Source images | At most 3 total | At most 9 total |
+
+Image3 uses the same bounded synchronous request contract, with at most three
+references, one image, and 512² to 2048² pixels as conservative plugin bounds.
+These are not newly measured Image3 gateway limits. Its own cards publish
+4500 prompt-input tokens, 5 RPM, 10 concurrent and a 200-task queue. Context is
+unknown; prompt input is not a context window. Existing Qwen2/Wan fallback
+ordering and all explicit operator selections remain unchanged.
 
 The three standard aspect ratios map to 1280*720, 1024*1024 and 720*1280.
 An explicit size overrides that mapping. The response reports the requested

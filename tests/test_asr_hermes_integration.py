@@ -44,8 +44,8 @@ if (Path.home() / 'plugins/model-providers/alibaba-token-plan').is_dir():
 user_plugins = {key for key, info in manager._plugins.items() if info.manifest.source == 'user'}
 assert user_plugins == expected, user_plugins
 from agent import image_gen_registry, video_gen_registry, tts_registry
-assert len(image_gen_registry.get_provider('alibaba-token-plan').list_models()) == 2
-assert len(image_gen_registry.get_provider('alibaba-token-plan-team').list_models()) == 4
+assert len(image_gen_registry.get_provider('alibaba-token-plan').list_models()) == 3
+assert len(image_gen_registry.get_provider('alibaba-token-plan-team').list_models()) == 5
 assert len(video_gen_registry.get_provider('alibaba-token-plan').list_models()) == 4
 for name in ('alibaba-token-plan', 'alibaba-token-plan-team', 'alibaba-token-plan-cn', 'alibaba-token-plan-cn-team'):
     tts = tts_registry.get_provider(name)
@@ -143,6 +143,29 @@ assert open_streaming_session(stt_config=stream_config) is None
 assert path.exists()  # the original recording remains for file fallback
 # A namespace cannot shadow the built-in handlers.
 assert transcription_tools._dispatch_to_plugin_provider(str(path), 'groq') is None
+from agent.secret_scope import set_secret_scope, reset_secret_scope
+for slug, key, host in (
+    ('alibaba-token-plan-team-asr', 'ALIBABA_TOKEN_PLAN_TEAM_API_KEY', 'token-plan.maas.qwencloudapi.com'),
+    ('alibaba-token-plan-cn-asr', 'ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY', 'token-plan.maas.qianwenaiapi.com'),
+    ('alibaba-token-plan-cn-team-asr', 'ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY', 'token-plan.maas.qianwenaiapi.com')):
+    selected = get_provider(slug)
+    assert selected is not None and not selected.streaming_capable
+    token = set_secret_scope({key: 'synthetic-scoped-asr'})
+    observed = []
+    class RegionalConnection(Connection):
+        def __init__(self, target, timeout):
+            assert target == host
+        def request(self, method, route, **kwargs):
+            assert kwargs['headers']['Authorization'] == 'Bearer synthetic-scoped-asr'
+            assert route == '/api/v1/services/aigc/multimodal-generation/generation'
+            observed.append(json.loads(kwargs['body']))
+    try:
+        with patch.object(http.client, 'HTTPSConnection', RegionalConnection), patch.object(socket, 'create_connection', deny_network):
+            result = transcription_tools._dispatch_to_plugin_provider(str(path), slug, model='qwen-audio-3.0-asr-flash', language='auto')
+        assert result['success'] and result['provider'] == slug, result
+        assert len(observed) == 1 and observed[0]['model'] == 'qwen-audio-3.0-asr-flash'
+    finally:
+        reset_secret_scope(token)
 print('Native discovery and transcribe_audio dispatch: PASS')
 '''
     result = subprocess.run([sys.executable, "-c", probe], cwd=tmp_path, env=env,

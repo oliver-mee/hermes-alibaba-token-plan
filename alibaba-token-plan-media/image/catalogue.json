@@ -48,5 +48,18 @@
     ],
     "status": "active",
     "endpoint": "unverified  -  listed on /models but the generation endpoint has not been probed"
+  },
+  {
+    "id": "qwen-image-3.0-pro",
+    "tiers": [
+      "team",
+      "personal"
+    ],
+    "regions": [
+      "global",
+      "cn"
+    ],
+    "status": "active",
+    "endpoint": "Documented synchronous POST /api/v1/services/aigc/multimodal-generation/generation with input.messages text/image parts; Token Plan exact-ID generation/editing unverified, no paid probe authorised."
   }
 ]
