@@ -123,8 +123,10 @@ ignored as required by Hermes's ABC; unknown configuration options are rejected.
 | Source images | At most 3 total | At most 9 total |
 
 Image3 uses the same bounded synchronous request contract, with at most three
-references, one image, and 512² to 2048² pixels as conservative plugin bounds.
-These are not newly measured Image3 gateway limits. Its own cards publish
+references, one image, 512² to 2048² pixels and aspect ratio 1:8 to 8:1.
+The pixel/ratio limits are documented in the [Qwen synchronous API](https://docs.qwencloud.com/api-reference/image-generation/qwen-text-to-image);
+reference/output-count restrictions are conservative plugin bounds. These are
+not newly measured Image3 gateway limits. Its own cards publish
 4500 prompt-input tokens, 5 RPM, 10 concurrent and a 200-task queue. Context is
 unknown; prompt input is not a context window. Existing Qwen2/Wan fallback
 ordering and all explicit operator selections remain unchanged.

@@ -27,7 +27,7 @@ CATALOGUE = json.loads(Path(__file__).with_name("catalogue.json").read_text())
 CONTRACTS = {
     "qwen-image-2.0": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2},
     "qwen-image-2.0-pro": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2},
-    "qwen-image-3.0-pro": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2},
+    "qwen-image-3.0-pro": {"async": False, "sources": 3, "min_pixels": 512**2, "max_pixels": 2048**2, "aspect_ratio": (1/8, 8)},
     "wan2.7-image": {"async": True, "sources": 9, "min_pixels": 768**2, "max_pixels": 2048**2},
     "wan2.7-image-pro": {"async": True, "sources": 9, "min_pixels": 768**2, "max_pixels": 4096**2},
 }
@@ -161,7 +161,8 @@ def _parameters(model, aspect, edit, options):
     width, height = map(int, size.split("*"))
     low = contract["min_pixels"]
     high = min(contract["max_pixels"], 2048**2) if edit else contract["max_pixels"]
-    if not low <= width * height <= high or (wan and not 1/8 <= width/height <= 8):
+    ratio_low, ratio_high = contract.get("aspect_ratio", (1/8, 8) if wan else (0, float("inf")))
+    if not low <= width * height <= high or not ratio_low <= width/height <= ratio_high:
         raise ValueError("size is outside the documented pixel range for this model/mode")
     return params
 

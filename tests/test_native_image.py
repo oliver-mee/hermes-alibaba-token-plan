@@ -97,6 +97,16 @@ def test_image3_explicit_selection_preserves_defaults(image, wire, name):
     assert all(c[3] == image.SYNC_PATH and c[4]["model"] == "qwen-image-3.0-pro" for c in calls)
 
 
+
+
+@pytest.mark.parametrize("size", ["4*65536", "65536*4"])
+def test_image3_rejects_extreme_ratio_before_submission(image, wire, size):
+    result = provider(image).generate("cloud", model="qwen-image-3.0-pro", size=size)
+    assert not result["success"]
+    assert not wire[0]
+    assert not result.get("submission_attempted", False)
+
+
 def test_registration_catalogue_and_evidence(image):
     registered = []
     image.register(types.SimpleNamespace(register_image_gen_provider=registered.append))
