@@ -5,6 +5,13 @@ Token Plan v2.0.0 ships two self-contained native packages: chat
 pack pins both to the same full Git commit. Media registers all four native
 backend families, while provider selection remains explicit.
 
+## Planned move of chat into Hermes core
+
+The bundled chat replacement is being prepared; no qualifying Hermes release
+is designated yet. Keep the released standalone chat component installed.
+The [staged core-chat migration guide](core-chat-migration.md) describes the
+release gate, chat-only removal and rollback. Media remains a separate component.
+
 ## Upgrading from 1.x
 
 Version 2.0.0 is a major release because installation now coordinates chat and
