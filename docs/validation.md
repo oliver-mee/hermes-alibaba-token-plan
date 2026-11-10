@@ -1,5 +1,22 @@
 # Validation
 
+## November 10 audio-only review follow-up
+
+The media package now ships only TTS and ASR. The image/video implementations,
+their registration, package inventories and backend-specific tests were removed.
+TTS reads credentials through `agent.secret_scope.get_secret`; ASR locates
+existing conversion binaries with `shutil.which`. No paid inference was run.
+
+Local Python 3.14 checks on the follow-up candidate:
+
+- `python -m pytest -q`: 241 passed, 12 Hermes-dependent skips.
+- Pinned Hermes 0.22.0 TTS/ASR loader and dispatcher tests: 3 passed.
+- Pinned Hermes 0.22.0 native media admission test: 1 passed.
+- Shell syntax, Python compilation and `git diff --check`: passed.
+
+The October sections below are historical release evidence, not validation of
+this audio-only candidate.
+
 ## October 23 catalogue and routing update
 
 The 2.0.1 update adds explicit Qwen Image 3.0 Pro generation/edit selection and
@@ -83,10 +100,9 @@ Existing chat names, aliases, endpoints and credential namespaces remain
 compatible. Native ASR exposes four isolated accounts; only Global Personal
 has dated live inference evidence.
 
-Native admission reports private host-helper imports for existing safety,
-conversion and interruption handling. These compatibility warnings remain
-visible and must be rechecked after host updates. The discovery cache uses a
-process-keyed HMAC identity without storing raw credentials or a persistent
+The audio-only follow-up removes the earlier private secret and ffmpeg helper
+imports. Native admission remains a required gate after host updates. The
+discovery cache uses a process-keyed HMAC identity without storing raw credentials or a persistent
 password verifier; the associated CodeQL findings were reviewed as false
 positives. No scanner rule or branch protection was disabled.
 

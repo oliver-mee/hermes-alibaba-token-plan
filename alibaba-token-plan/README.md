@@ -11,8 +11,8 @@ credential/cache isolation, model-specific reasoning controls and a lower-cost
 auxiliary model, while preserving existing provider identities and aliases.
 
 This is the chat component of the [Token Plan integration](https://github.com/oliver-mee/hermes-alibaba-token-plan).
-Install it independently or use the coordinated release pack to add native image,
-video, speech and transcription. Native package installation does not run the
+Install it independently or use the coordinated release pack to add native speech
+and transcription. Native package installation does not run the
 repository's shell installer. Migrate legacy shell installations first to avoid
 simultaneous category and flat copies. No credentials or defaults are changed by
 this component's import.

@@ -146,12 +146,12 @@ def install(component, **kwargs):
 
 def discover_media(expected):
     from hermes_cli.plugins import PluginManager
-    from agent import image_gen_registry, video_gen_registry, tts_registry, transcription_registry
-    for registry in (image_gen_registry, video_gen_registry, tts_registry, transcription_registry):
+    from agent import tts_registry, transcription_registry
+    for registry in (tts_registry, transcription_registry):
         registry._reset_for_tests()
     manager = PluginManager()
     manager.discover_and_load()
-    for registry in (image_gen_registry, video_gen_registry, tts_registry, transcription_registry):
+    for registry in (tts_registry, transcription_registry):
         provider_name = "alibaba-token-plan-asr" if registry is transcription_registry else "alibaba-token-plan"
         assert (registry.get_provider(provider_name) is not None) == expected, registry.__name__
     return manager

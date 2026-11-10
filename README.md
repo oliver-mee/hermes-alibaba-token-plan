@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/oliver-mee/hermes-alibaba-token-plan)](https://github.com/oliver-mee/hermes-alibaba-token-plan/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[Hermes Agent](https://github.com/NousResearch/hermes-agent) integration for Alibaba Token Plan: chat plus opt-in native image, video, speech synthesis and file transcription. Qwen Cloud is an alternate console view of the same plan, not a separate product.
+[Hermes Agent](https://github.com/NousResearch/hermes-agent) integration for Alibaba Token Plan: chat plus opt-in native speech synthesis and file transcription. Qwen Cloud is an alternate console view of the same plan, not a separate product.
 
 Version 2.0.1 contains two coordinated components: the improved, backward-compatible chat provider and `alibaba-token-plan-media`. A native Hermes pack installs both at the same reviewed commit. Media uses Hermes's normal tools and voice pipeline; no parallel tools or calling UI are added. See [validation](docs/validation.md) for native integration, package lifecycle and dated live/playback results.
 
@@ -42,7 +42,7 @@ Completions transport.
 
 - Chat: Hermes Agent v0.18.2/v0.19.0 compatibility points, plus v0.22.0
 - Native media and installation packs: Hermes Agent v0.22.0+
-- Media dependencies: `httpx>=0.28,<0.29`, `websockets>=14,<17`
+- Media dependencies: `websockets>=14,<17`
 - Voice-note conversion/delivery: existing ffmpeg and ffprobe when required
 - Python 3.11+ with a version supported by your Hermes release
 - Linux or macOS
@@ -198,14 +198,14 @@ evidence remain separate from current inference acceptance.
 ## Media catalogue
 
 The generated `MEDIA_MODELS` metadata in `fallback_models.py` records the plan's
-non-chat models alongside the chat lists. These are not chat-picker entries:
-`wan3.0-video`, for example, uses asynchronous video synthesis, not Chat
-Completions. The combined media component implements native image generation/editing,
-asynchronous video, whole-file speech and synchronous file transcription.
-See [image](docs/native-image.md), [video](docs/native-video.md),
-[TTS](docs/native-tts.md) and [ASR](NATIVE-ASR.md) for explicit configuration,
-implemented subsets and evidence limits. Realtime calling and PCM streaming remain disabled.
-See the [Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
+non-chat models alongside the chat lists. These are not chat-picker entries.
+The media component implements only whole-file speech and synchronous file
+transcription. Image, video and realtime rows remain catalogue metadata so
+those IDs stay out of chat selection; this package registers no backends for
+them. See [TTS](docs/native-tts.md) and [ASR](NATIVE-ASR.md) for explicit
+configuration, implemented subsets and evidence limits. Realtime calling and
+PCM streaming remain disabled. See the
+[Token Plan Wiki](https://github.com/oliver-mee/alibaba-token-plan-wiki)
 for the per-model endpoints, rates and dated entitlement evidence. Listing
 entitlement does not establish successful inference or a measured credit charge.
 
@@ -224,14 +224,9 @@ entitlement does not establish successful inference or a measured credit charge.
 - `wan3.0-video` (video; team, personal; global, cn)
 <!-- END GENERATED -->
 
-## October 23 media catalogue update
+## October 23 ASR account update
 
-`qwen-image-3.0-pro` is vendor-released and now Token Plan-listed, not a future
-launch. Explicitly select it using the existing native image provider; working
-Image2/Wan selections and fallback defaults are unchanged. Generation/editing
-is covered with mocked native dispatch, not paid Image3 inference.
-
-File ASR now has four isolated accounts. Keep `alibaba-token-plan-asr` for Global
+File ASR has four isolated accounts. Keep `alibaba-token-plan-asr` for Global
 Personal, or explicitly select `alibaba-token-plan-team-asr`,
 `alibaba-token-plan-cn-asr`, or `alibaba-token-plan-cn-team-asr`. Each uses only
 its own region/tier key. Listing does not establish current Team/China inference

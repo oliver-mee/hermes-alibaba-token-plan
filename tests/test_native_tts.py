@@ -19,7 +19,9 @@ def provider(monkeypatch):
             return self.list_voices()[0]['id']
     abc = types.ModuleType('agent.tts_provider')
     abc.TTSProvider = Base
+    monkeypatch.setitem(sys.modules, 'agent', types.ModuleType('agent'))
     monkeypatch.setitem(sys.modules, 'agent.tts_provider', abc)
+    monkeypatch.setitem(sys.modules, 'agent.secret_scope', types.SimpleNamespace(get_secret=lambda name: ''))
     monkeypatch.setitem(sys.modules, 'tools.interrupt', types.SimpleNamespace(is_interrupted=lambda: False))
     spec = importlib.util.spec_from_file_location('native_tts_test', ROOT / 'alibaba-token-plan-media/tts/provider.py')
     module = importlib.util.module_from_spec(spec)
@@ -129,15 +131,13 @@ def test_missing_key(provider, monkeypatch, tmp_path):
 
 def test_native_secret_resolver_is_region_and_tier_isolated(provider, monkeypatch):
     calls = []
-    helper = types.ModuleType('tools.tool_backend_helpers')
-    def resolve(name, pool):
-        calls.append((name, pool))
+    def resolve(name):
+        calls.append(name)
         return 'synthetic' if name == 'ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY' else ''
-    helper.resolve_provider_secret = resolve
-    monkeypatch.setitem(sys.modules, 'tools.tool_backend_helpers', helper)
+    monkeypatch.setattr(provider, 'get_secret', resolve)
     # Retrieve the original method hidden by the fixture patch.
     assert provider.original_key(provider.TokenPlanTTSProvider('cn', 'team')) == 'synthetic'
-    assert calls == [('ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY', '')]
+    assert calls == ['ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY']
 
 
 def test_native_metadata_is_local_and_model_specific(provider, monkeypatch):
@@ -342,20 +342,18 @@ def test_concurrent_calls_have_separate_tasks_and_artifacts(provider, monkeypatc
 ])
 def test_scoped_key_alias_precedence(provider, monkeypatch, region, tier, names):
     calls = []
-    helper = types.ModuleType('tools.tool_backend_helpers')
     values = {}
-    def resolve(name, pool):
-        calls.append((name, pool))
+    def resolve(name):
+        calls.append(name)
         return values.get(name, '')
-    helper.resolve_provider_secret = resolve
-    monkeypatch.setitem(sys.modules, 'tools.tool_backend_helpers', helper)
+    monkeypatch.setattr(provider, 'get_secret', resolve)
     p = provider.TokenPlanTTSProvider(region, tier)
     assert provider.original_key(p) == ''
-    assert calls == [(name, '') for name in names]
+    assert calls == names
     values.update({names[0]: 'legacy-or-canonical', names[-1]: 'canonical'})
     calls.clear()
     assert provider.original_key(p) == values[names[0]]
-    assert calls == [(names[0], '')]
+    assert calls == [names[0]]
 
 
 def test_old_host_registration_guard(tmp_path):
@@ -458,6 +456,25 @@ def test_media_entrypoint_import_is_inert(monkeypatch):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert callable(module.register)
+
+
+def test_media_package_registers_only_tts_and_asr(monkeypatch):
+    calls = []
+    name = "scoped_media_entrypoint"
+    spec = importlib.util.spec_from_file_location(
+        name, ROOT / "alibaba-token-plan-media/__init__.py",
+        submodule_search_locations=[str(ROOT / "alibaba-token-plan-media")])
+    module = importlib.util.module_from_spec(spec)
+    monkeypatch.setitem(sys.modules, name, module)
+    spec.loader.exec_module(module)
+    for backend in ("tts", "asr"):
+        stub = types.ModuleType(f"{name}.{backend}")
+        stub.register = lambda ctx, backend=backend: calls.append(backend)
+        monkeypatch.setitem(sys.modules, f"{name}.{backend}", stub)
+    module.register(object())
+    assert calls == ["tts", "asr"]
+    assert not (ROOT / "alibaba-token-plan-media/image").exists()
+    assert not (ROOT / "alibaba-token-plan-media/video").exists()
 
 
 def test_media_bundles_exact_canonical_catalogue():

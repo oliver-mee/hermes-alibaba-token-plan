@@ -16,6 +16,7 @@ import tempfile
 import time
 import uuid
 
+from agent.secret_scope import get_secret
 from agent.tts_provider import TTSProvider
 from tools.interrupt import is_interrupted
 
@@ -90,9 +91,7 @@ class TokenPlanTTSProvider(TTSProvider):
         return (*aliases, canonical)
 
     def _key(self):
-        from tools.tool_backend_helpers import resolve_provider_secret
-        # Empty pool id prevents a generic credential pool from overriding tier isolation.
-        return next((key for name in self.key_names if (key := resolve_provider_secret(name, ""))), "")
+        return next((key for name in self.key_names if (key := get_secret(name))), "")
 
     def is_available(self):
         try:

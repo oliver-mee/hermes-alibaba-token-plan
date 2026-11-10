@@ -12,7 +12,7 @@ def render(sha):
         raise ValueError("Release ref must be a full 40-character Git commit SHA")
     version = re.search(r"^version:\s*(\S+)", (ROOT / "alibaba-token-plan/plugin.yaml").read_text(), re.M)[1]
     return f'''name: alibaba-token-plan
-description: "Token Plan chat and native image, video, speech and transcription"
+description: "Token Plan chat and native speech and transcription"
 author: Oliver Mee
 version: "{version}"
 plugins:

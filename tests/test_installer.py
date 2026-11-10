@@ -13,9 +13,8 @@ INSTALLER = REPO / "install.sh"
 CHAT_FILES = ("__init__.py", "plugin.yaml", "fallback_models.py", "LICENSE")
 MEDIA_FILES = (
     "__init__.py", "plugin.yaml", "fallback_models.py", "LICENSE",
-    "THIRD-PARTY-NOTICES-ASR.txt", "video/__init__.py", "video/catalogue.py",
-    "video/LICENSE", "image/__init__.py", "image/media.py", "image/catalogue.json",
-    "image/LICENSE", "tts/__init__.py", "tts/provider.py", "asr/__init__.py", "asr/provider.py",
+    "THIRD-PARTY-NOTICES-ASR.txt", "tts/__init__.py", "tts/provider.py",
+    "asr/__init__.py", "asr/provider.py",
 )
 
 
@@ -116,7 +115,7 @@ def test_v156_upgrade_legacy_retirement_and_uninstall_backups(tmp_path):
 
 
 @pytest.mark.parametrize("component,file", [(0, "fallback_models.py"), (1, "asr/provider.py"),
-                                           (1, "video/LICENSE"), (1, "THIRD-PARTY-NOTICES-ASR.txt")])
+                                           (1, "tts/provider.py"), (1, "THIRD-PARTY-NOTICES-ASR.txt")])
 def test_corruption_detected_and_repaired(tmp_path, component, file):
     home = tmp_path / "home"
     assert run_installer(home).returncode == 0

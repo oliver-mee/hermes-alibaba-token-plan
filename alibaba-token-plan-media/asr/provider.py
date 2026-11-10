@@ -9,6 +9,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -18,7 +19,6 @@ import wave
 from agent.secret_scope import get_secret
 from agent.file_safety import get_read_block_error
 from agent.transcription_provider import TranscriptionProvider
-from tools.transcription_audio import _find_ffmpeg_binary, _find_ffprobe_binary
 
 class ASRError(ValueError):
     """Safe, locally authored error message."""
@@ -96,7 +96,7 @@ def normalise(file_path):
             wav_duration(data)
             if len(data) <= MAX_WAV:
                 return data
-    ffmpeg, ffprobe = _find_ffmpeg_binary(), _find_ffprobe_binary()
+    ffmpeg, ffprobe = shutil.which("ffmpeg"), shutil.which("ffprobe")
     if not ffmpeg or not ffprobe:
         raise ASRError("Audio conversion requires existing ffmpeg and ffprobe; nothing was installed", "dependency")
     with tempfile.TemporaryDirectory(prefix="token-plan-asr-") as directory:

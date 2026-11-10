@@ -2,8 +2,8 @@
 
 Token Plan v2.0.0 ships two self-contained native packages: chat
 (`alibaba-token-plan-provider`) and media (`alibaba-token-plan-media`). A release
-pack pins both to the same full Git commit. Media registers all four native
-backend families, while provider selection remains explicit.
+pack pins both to the same full Git commit. Media registers the TTS and
+transcription backend families, while provider selection remains explicit.
 
 ## Upgrading from 1.x
 
@@ -86,7 +86,7 @@ original locations. Restore the recorded enabled-plugin configuration separately
 Never move a live native-managed directory behind Hermes's back.
 
 Neither uninstall path removes the operator's credentials or changes the chosen
-chat, image, video, TTS or STT provider. Preserve a recoverable copy of customised
+chat, TTS or STT provider. Preserve a recoverable copy of customised
 plugin files before any removal.
 
 ## Updates before catalog acceptance

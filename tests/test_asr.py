@@ -41,8 +41,6 @@ def asr(monkeypatch):
         "agent.file_safety": types.SimpleNamespace(get_read_block_error=lambda path: None),
         "agent.transcription_provider": types.SimpleNamespace(TranscriptionProvider=type("Base", (), {
             "default_model": lambda self: self.list_models()[0]["id"]})),
-        "tools": types.ModuleType("tools"),
-        "tools.transcription_audio": types.SimpleNamespace(_find_ffmpeg_binary=lambda: None, _find_ffprobe_binary=lambda: None),
     }
     for name, module in modules.items():
         monkeypatch.setitem(sys.modules, name, module)
@@ -231,16 +229,25 @@ def test_missing_key_does_not_read_or_decode(asr, monkeypatch):
 def test_invalid_pcm_never_enters_repair_decoder(asr, tmp_path, monkeypatch, data):
     path = tmp_path / "recording.wav"
     path.write_bytes(data)
-    monkeypatch.setattr(asr, "_find_ffmpeg_binary", lambda: pytest.fail("Must reject damaged/long PCM"))
+    monkeypatch.setattr(asr.shutil, "which", lambda name: pytest.fail("Must reject damaged/long PCM"))
     assert asr.TokenPlanASR().transcribe(path)["error_kind"] == "invalid_request"
+
+
+def test_missing_public_conversion_binaries(asr, audio, monkeypatch):
+    audio.write_bytes(wav(rate=8000))
+    calls = []
+    monkeypatch.setattr(asr.shutil, "which", lambda name: calls.append(name))
+    result = asr.TokenPlanASR().transcribe(audio)
+    assert result["error_kind"] == "dependency"
+    assert "nothing was installed" in result["error"]
+    assert calls == ["ffmpeg", "ffprobe"]
 
 
 @pytest.mark.parametrize("failure", ["probe", "decode", "cancel", "duration", "truncated"])
 def test_conversion_cleanup_and_bounds(asr, audio, tmp_path, monkeypatch, failure):
     import subprocess
     audio.write_bytes(wav(rate=8000))
-    monkeypatch.setattr(asr, "_find_ffmpeg_binary", lambda: "ffmpeg")
-    monkeypatch.setattr(asr, "_find_ffprobe_binary", lambda: "ffprobe")
+    monkeypatch.setattr(asr.shutil, "which", lambda name: name)
     monkeypatch.setattr(asr.tempfile, "tempdir", str(tmp_path))
     calls = []
     def run(command, **options):

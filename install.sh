@@ -66,7 +66,6 @@ names=(alibaba-token-plan alibaba-token-plan-media alibaba-token-plan-cn)
 # Fixed release inventory: never recursively copy arbitrary source files or caches.
 chat_files=(__init__.py plugin.yaml fallback_models.py LICENSE)
 media_files=(__init__.py plugin.yaml fallback_models.py LICENSE THIRD-PARTY-NOTICES-ASR.txt
-  video/__init__.py video/catalogue.py video/LICENSE image/__init__.py image/media.py image/catalogue.json image/LICENSE
   tts/__init__.py tts/provider.py asr/__init__.py asr/provider.py)
 files_for() {
   case "$1" in 0) printf '%s\n' "${chat_files[@]}" ;; 1) printf '%s\n' "${media_files[@]}" ;; esac

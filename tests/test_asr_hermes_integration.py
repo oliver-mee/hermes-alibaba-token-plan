@@ -36,17 +36,14 @@ from agent.transcription_registry import get_provider
 from tools import transcription_tools
 manager = PluginManager()
 manager.discover_and_load()
-# Enabling one package loads all four native registries together. Only the root
-# media manifest is discovered, including when no chat sibling is installed.
+# Enabling one package loads the TTS and transcription registries together. Only
+# the root media manifest is discovered, including when no chat sibling is installed.
 expected = {'alibaba-token-plan-media'}
 if (Path.home() / 'plugins/model-providers/alibaba-token-plan').is_dir():
     expected.add('model-providers/alibaba-token-plan')
 user_plugins = {key for key, info in manager._plugins.items() if info.manifest.source == 'user'}
 assert user_plugins == expected, user_plugins
-from agent import image_gen_registry, video_gen_registry, tts_registry
-assert len(image_gen_registry.get_provider('alibaba-token-plan').list_models()) == 3
-assert len(image_gen_registry.get_provider('alibaba-token-plan-team').list_models()) == 5
-assert len(video_gen_registry.get_provider('alibaba-token-plan').list_models()) == 4
+from agent import tts_registry
 for name in ('alibaba-token-plan', 'alibaba-token-plan-team', 'alibaba-token-plan-cn', 'alibaba-token-plan-cn-team'):
     tts = tts_registry.get_provider(name)
     assert tts.default_model() == 'qwen-audio-3.0-tts-plus'
