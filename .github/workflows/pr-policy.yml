@@ -18,12 +18,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Accept Dependabot dependency metadata
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        run: printf '%s\n' 'Dependabot update. Human pull request body policy is not applicable.'
       - name: Check out trusted base revision
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
       - name: Validate pull request body
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
         id: policy
         continue-on-error: true
         env:

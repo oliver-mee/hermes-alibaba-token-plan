@@ -402,7 +402,7 @@ def _read_manifest():
 def test_chat_manifest_matches_release_version():
     scalars, _ = _read_manifest()
     assert scalars["kind"] == "model-provider"
-    assert scalars["version"] == "2.0.0"
+    assert scalars["version"] == "2.0.1"
 
 
 def test_manifest_declares_v2_metadata():

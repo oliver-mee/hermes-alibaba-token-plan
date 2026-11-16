@@ -2,7 +2,7 @@
 
 One opt-in Hermes plugin registers image generation/editing, asynchronous video,
 whole-file speech synthesis and file transcription through the standard native
-tools and voice pipeline. Both chat and media components are version 2.0.0.
+tools and voice pipeline. Both chat and media components are version 2.0.1.
 Requires Hermes v0.22.0+; chat is a separate component.
 The generated catalogue is bundled here, so this package works without chat.
 
@@ -18,8 +18,9 @@ migrated first. See the repository's [installation guide](../docs/installation.m
 ## Accounts, privacy and billing
 
 Image/TTS providers use four explicit region/tier namespaces; video selects its
-region/tier with its native provider configuration. File ASR is restricted to
-Global Personal. Keys come through Hermes's profile-scoped secret interfaces.
+region/tier with its native provider configuration. File ASR exposes separate
+Global/China Personal/Team providers; only Global Personal has dated live
+inference evidence. Keys come through Hermes's profile-scoped secret interfaces.
 No PAYG, Coding Plan or cross-account fallback, automatic model substitution or
 paid-submission retry. Configure only keys for accounts you hold.
 

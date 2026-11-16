@@ -11,6 +11,27 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
+@pytest.mark.parametrize("name", ["alibaba-token-plan-asr", "alibaba-token-plan-team-asr",
+                                  "alibaba-token-plan-cn-asr", "alibaba-token-plan-cn-team-asr"])
+def test_all_listed_asr_accounts_are_isolated(asr, audio, monkeypatch, name):
+    provider = asr.TokenPlanASR(name)
+    requested, calls = [], []
+    def secret(key):
+        requested.append(key)
+        return "synthetic" if key == provider.keys[-1] else ""
+    monkeypatch.setattr(asr, "get_secret", secret)
+    monkeypatch.setattr(asr, "post", lambda *args: calls.append(args) or {"output": {"text": "ok"}})
+    assert provider.transcribe(audio)["success"]
+    assert requested == list(provider.keys)
+    assert len(calls) == 1
+    assert (calls[0][2] if len(calls[0]) == 3 else "token-plan.maas.qwencloudapi.com") == provider.host
+    assert provider.get_setup_schema()["env_vars"][0]["key"] == provider.keys[-1]
+    monkeypatch.setattr(asr, "get_secret", lambda key: "other-account" if key not in provider.keys else "")
+    assert not provider.is_available()
+    assert provider.transcribe(audio)["error_kind"] == "credential"
+    assert len(calls) == 1
+
+
 
 @pytest.fixture
 def asr(monkeypatch):
@@ -50,7 +71,7 @@ def audio(tmp_path):
 
 def test_payload_and_silence(asr, audio, monkeypatch):
     calls = []
-    def post(payload, key):
+    def post(payload, key, host):
         calls.append(payload)
         return {"output": {"text": ""}}
     monkeypatch.setattr(asr, "post", post)
@@ -164,7 +185,7 @@ def test_malformed_upstream_never_leaks(asr, audio, monkeypatch, raw):
 def test_legacy_first_key_and_unknown_extra(asr, audio, monkeypatch):
     monkeypatch.setattr(asr, "get_secret", lambda key: key)
     captured = []
-    def post(payload, key):
+    def post(payload, key, host):
         captured.append(key)
         return {"output": {"text": "ok"}}
     monkeypatch.setattr(asr, "post", post)

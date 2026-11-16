@@ -1,13 +1,33 @@
 # Native Token Plan file transcription
 
+## October 23 listing graduation
+
+The existing file-ASR model is now listed on Global Personal/Team and China
+Team; China Personal is documented, not keyed. The existing Global Personal
+provider ID `alibaba-token-plan-asr` and credential precedence are unchanged.
+New explicit providers are `alibaba-token-plan-team-asr`,
+`alibaba-token-plan-cn-asr` and `alibaba-token-plan-cn-team-asr`, using the
+matching canonical `ALIBABA_TOKEN_PLAN_*_API_KEY` only (China Personal also
+retains its own legacy alias). No cross-account or PAYG fallback. Select the
+provider under `stt.provider` and set its own language to `auto`.
+
+All use the existing synchronous multimodal HTTP payload and native transcription
+pipeline. New account routing is mocked-integration tested; actual Team/China
+inference and debit are unverified. Existing historical Global Personal live
+results remain dated evidence. The 180-second/7-MiB safety caps and disabled
+streaming are unchanged.
+
+
 This opt-in directory plugin implements Hermes `TranscriptionProvider` using
 `qwen-audio-3.0-asr-flash` and synchronous HTTP POST to
-`https://token-plan.maas.qwencloudapi.com/api/v1/services/aigc/multimodal-generation/generation`.
+`/api/v1/services/aigc/multimodal-generation/generation` on the selected fixed
+regional host, `token-plan.maas.qwencloudapi.com` (Global) or
+`token-plan.maas.qianwenaiapi.com` (China).
 It never calls the generic OpenAI `/audio/transcriptions` endpoint or `/models`.
 
 ## Install and configure
 
-ASR ships in the combined 2.0.0 media plugin alongside the chat component.
+ASR ships in the combined 2.0.1 media plugin alongside the chat component.
 Use the [coordinated release pack](docs/installation.md), which enables both
 components after interactive consent, or the shell workflow below.
 
@@ -51,9 +71,12 @@ Existing Global Personal aliases retain their legacy-first precedence:
 `QWEN_TOKEN_PLAN_API_KEY`, `BAILIAN_TOKEN_PLAN_API_KEY`,
 `ALIBABA_TOKEN_PLAN_API_KEY`, then `ALIBABA_TOKEN_PLAN_PERSONAL_API_KEY`.
 Resolution uses Hermes's scoped `get_secret`, including its fail-closed profile
-isolation. No Team, CN, DashScope PAYG or Coding Plan credentials are read.
-Chat base-URL overrides remain unchanged; this ASR backend pins the canonical
-Global host and does not inherit chat endpoint overrides.
+isolation. Global Team reads only `ALIBABA_TOKEN_PLAN_TEAM_API_KEY`. China
+Personal checks `ALIBABA_TOKEN_PLAN_CN_API_KEY`, then
+`ALIBABA_TOKEN_PLAN_CN_PERSONAL_API_KEY`. China Team reads only
+`ALIBABA_TOKEN_PLAN_CN_TEAM_API_KEY`. No provider reads a different account,
+DashScope PAYG or Coding Plan key. Chat base-URL overrides remain unchanged;
+ASR pins its regional host and does not inherit chat endpoint overrides.
 
 ## Native paths and evidence boundary
 
@@ -70,8 +93,8 @@ gates are maintained in [validation](docs/validation.md).
 | Region and tier | Support boundary |
 |---|---|
 | Global Personal | Enabled; see dated validation evidence |
-| Global Team | Not enabled by this backend |
-| China Personal / Team | Not enabled by this backend |
+| Global Team | Implemented; native mocked dispatch passed, inference unverified |
+| China Personal / Team | Implemented; native mocked dispatch passed, inference unverified; Personal listing documented only |
 
 The vendor's [exact-model example](https://www.qwencloud.com/models/qwen-audio-3.0-asr-flash)
 uses `input_audio` with `format: wav` and `sample_rate: "16000"`.
@@ -121,7 +144,7 @@ transport/session/tool-delegation integration and is outside this change.
 - Explicit empty transcripts are valid silence; missing/malformed transcript fields
   fail. Both historical `output.text` and `output.output.sentence.text` are accepted.
 
-Audio is transmitted to the configured Global Token Plan service when the user
+Audio is transmitted to the selected regional Token Plan service when the user
 invokes transcription. Temporary decoded files are removed on success or failure;
 the caller retains ownership of its source recording. Subprocess timeouts terminate
 the conversion; interruption unwinds its private temporary directory and closes
@@ -189,11 +212,10 @@ MIT attribution remains in `THIRD-PARTY-NOTICES-ASR.txt` and is now installed.
 | [Deepgram Voice](https://github.com/jaysonsantos/hermes-deepgram-voice-plugin/tree/2d31b885ec873ed6693edd7ad1a80f7023439ac0), `stt.py`, `http.py` | MIT, Copyright 2026 Jayson Santos dos Reis | Resolve credentials before reading/converting audio; retain native setup/registration and model-selection pattern | Deepgram detection/language/formatting query fields and arbitrary endpoint overrides lack an exact Qwen contract; raw vendor error messages and unknown model submission are unsuitable here. Empty text remains valid silence. |
 | [Hermes v0.22.0](https://github.com/NousResearch/hermes-agent/tree/e06df9c2eae6901f4c88f464e0ae6e753c0428b8), `agent/transcription_provider.py`, `tools/transcription_{audio,cloud,command,streaming}.py` | MIT, Copyright 2025 Nous Research | Native model/language/prompt ownership, provider-specific `auto` over global `en`, no-shadow dispatch, standard error envelope and streaming-to-file fallback; test hook rejection and recovery after quota failure through actual dispatcher | Built-in SDK language/prompt fields, upload chunking and live protocols do not establish Qwen support. No custom picker, worker pipeline or full-duplex integration. |
 
-Catalogue provenance: [public `data/models.json` at
-`a76c7a7e8c5846c80ab65991546e30cac66035b0`](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/a76c7a7e8c5846c80ab65991546e30cac66035b0/data/models.json),
-updated 2026-10-15. Its exact ASR entry is Global Personal, unlisted, synchronous,
-with historical 2026-09-25 success and unsuccessful live-ASR routes. The generated
-`MEDIA_MODELS` order and all chat/region/tier namespaces remain unchanged. The
+Catalogue provenance: [public October23 `data/models.json`](https://github.com/oliver-mee/alibaba-token-plan-wiki/blob/56533ed251c632925f5242070c136542de07cd10/data/models.json).
+The ASR row is now active across both documented regions/tiers. Historical
+Global Personal success and unsuccessful streaming routes retain their dates.
+Generated media ordering and chat namespaces remain unchanged. The
 current vendor exact-model example still exposes only audio/format/sample-rate;
 its general contextualisation claim is insufficient to invent a hint parameter.
 We keep the conservative 180-second/7 MiB WAV limits below the catalogue's
